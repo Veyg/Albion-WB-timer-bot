@@ -2,7 +2,6 @@ package discord.worldbosses;
 
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Activity;
-import net.dv8tion.jda.api.requests.GatewayIntent;
 
 public class AlbionBot {
     public static void main(String[] args) throws Exception {
@@ -11,7 +10,7 @@ public class AlbionBot {
         JDABuilder builder = JDABuilder.createDefault(token);
         builder.setActivity(Activity.playing("Tracking Albion Bosses"));
         builder.addEventListeners(new CommandListener());
-        builder.enableIntents(GatewayIntent.GUILD_MESSAGES, GatewayIntent.MESSAGE_CONTENT);
+
         builder.build();
     }
 }

@@ -1,14 +1,11 @@
 package discord.worldbosses;
 
-import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.events.interaction.SelectionMenuEvent;
+import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-import net.dv8tion.jda.api.interactions.components.selections.SelectMenu;
-import net.dv8tion.jda.api.interactions.components.selections.SelectOption;
+import net.dv8tion.jda.api.interactions.Interaction;
+import net.dv8tion.jda.api.interactions.components.selections.SelectMenuInteraction;
 
-import java.awt.*;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -22,23 +19,15 @@ public class CommandListener extends ListenerAdapter {
         String userId = event.getAuthor().getId();
 
         if (message.startsWith("!addtimer")) {
-            MessageEmbed embed = new EmbedBuilder()
-                .setTitle("Add Timer")
-                .setDescription("Please select a map from the dropdown.")
-                .setColor(Color.BLUE)
-                .build();
+            // TODO: Adjust the select menu creation based on JDA 5's methods
+            // For now, we'll comment it out
+            /*
+            SelectMenu menu = ...; // Create the select menu using JDA 5's methods
 
-            // Create a select menu (dropdown) with map options
-            SelectMenu menu = SelectMenu.create("map-selector")
-                .addOption(SelectOption.of("Map 1", "map1"))
-                .addOption(SelectOption.of("Map 2", "map2"))
-                .addOption(SelectOption.of("Map 3", "map3"))
-                .build();
-
-            // Send the embed with the select menu
-            event.getChannel().sendMessage(embed)
+            event.getChannel().sendMessage("Please select a map from the dropdown.")
                 .setActionRow(menu)
                 .queue();
+            */
 
             userStates.put(userId, "awaiting_map_selection");
         } else if (userStates.getOrDefault(userId, "").equals("awaiting_time_input")) {
@@ -52,16 +41,23 @@ public class CommandListener extends ListenerAdapter {
     }
 
     @Override
-    public void onSelectionMenu(SelectionMenuEvent event) {
-        String userId = event.getUser().getId();
-        if (event.getComponentId().equals("map-selector") && "awaiting_map_selection".equals(userStates.get(userId))) {
-            String selectedMap = event.getSelectedValues().get(0); // Get the first selected value
+    public void onGenericInteractionCreate(GenericInteractionCreateEvent event) {
+        Interaction interaction = event.getInteraction();
+        
+        if (interaction instanceof SelectMenuInteraction<?, ?>) {
+            SelectMenuInteraction<?, ?> selectMenu = (SelectMenuInteraction<?, ?>) interaction;
+            
+            // Handle the select menu interaction
+            String userId = selectMenu.getUser().getId();
+            if (selectMenu.getId().equals("map-selector") && "awaiting_map_selection".equals(userStates.get(userId))) {
+                String selectedMap = (String) selectMenu.getValues().get(0); // Get the first selected value
 
-            // Now, ask the user to provide the time for the selected map
-            event.getChannel().sendMessage("You selected " + selectedMap + ". Please provide the time.").queue();
+                // Now, ask the user to provide the time for the selected map
+                selectMenu.getChannel().sendMessage("You selected " + selectedMap + ". Please provide the time.").queue();
 
-            userStates.put(userId, "awaiting_time_input");
-            userStates.put(userId + "_selected_map", selectedMap);
+                userStates.put(userId, "awaiting_time_input");
+                userStates.put(userId + "_selected_map", selectedMap);
+            }
         }
     }
 }
