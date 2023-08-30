@@ -4,7 +4,9 @@ import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.Interaction;
+import net.dv8tion.jda.api.interactions.components.selections.SelectMenu;
 import net.dv8tion.jda.api.interactions.components.selections.SelectMenuInteraction;
+import net.dv8tion.jda.api.interactions.components.selections.StringSelectMenu;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -19,15 +21,12 @@ public class CommandListener extends ListenerAdapter {
         String userId = event.getAuthor().getId();
 
         if (message.startsWith("!addtimer")) {
-            // TODO: Adjust the select menu creation based on JDA 5's methods
-            // For now, we'll comment it out
-            /*
-            SelectMenu menu = ...; // Create the select menu using JDA 5's methods
+            System.out.println("Received !addtimer command.");
+            SelectMenu menu = createMapSelectMenu();
 
             event.getChannel().sendMessage("Please select a map from the dropdown.")
                 .setActionRow(menu)
                 .queue();
-            */
 
             userStates.put(userId, "awaiting_map_selection");
         } else if (userStates.getOrDefault(userId, "").equals("awaiting_time_input")) {
@@ -42,14 +41,23 @@ public class CommandListener extends ListenerAdapter {
 
     @Override
     public void onGenericInteractionCreate(GenericInteractionCreateEvent event) {
+        System.out.println("Received an interaction event.");
+
         Interaction interaction = event.getInteraction();
         
         if (interaction instanceof SelectMenuInteraction<?, ?>) {
+            System.out.println("Interaction is of type SelectMenuInteraction.");
+
             SelectMenuInteraction<?, ?> selectMenu = (SelectMenuInteraction<?, ?>) interaction;
             
-            // Handle the select menu interaction
             String userId = selectMenu.getUser().getId();
+            System.out.println("User ID: " + userId);
+            System.out.println("SelectMenu ID: " + selectMenu.getId());
+            System.out.println("User state: " + userStates.get(userId));
+
             if (selectMenu.getId().equals("map-selector") && "awaiting_map_selection".equals(userStates.get(userId))) {
+                System.out.println("Inside the map selection logic.");
+
                 String selectedMap = (String) selectMenu.getValues().get(0); // Get the first selected value
 
                 // Now, ask the user to provide the time for the selected map
@@ -59,5 +67,15 @@ public class CommandListener extends ListenerAdapter {
                 userStates.put(userId + "_selected_map", selectedMap);
             }
         }
+    }
+
+    private SelectMenu createMapSelectMenu() {
+        return StringSelectMenu.create("map-selector")
+                .addOption("Map 1", "map1_value")
+                .addOption("Map 2", "map2_value")
+                // ... add more maps as needed
+                .setPlaceholder("Choose a map...")
+                .setRequiredRange(1, 1)
+                .build();
     }
 }
