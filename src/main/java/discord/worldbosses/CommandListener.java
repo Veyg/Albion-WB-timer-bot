@@ -1,23 +1,19 @@
 package discord.worldbosses;
 
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-import net.dv8tion.jda.api.interactions.Interaction;
 import net.dv8tion.jda.api.interactions.components.selections.SelectMenu;
 import net.dv8tion.jda.api.interactions.components.selections.SelectMenuInteraction;
 import net.dv8tion.jda.api.interactions.components.selections.StringSelectMenu;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class CommandListener extends ListenerAdapter {
-    private static final Logger logger = LoggerFactory.getLogger(CommandListener.class);
-
     private BossManager bossManager = new BossManager();
-    private Map<String, String> userStates = new HashMap<>(); // To track user's current interaction state
+    private Map<String, String> userStates = new HashMap<>();
 
     @Override
     public void onMessageReceived(MessageReceivedEvent event) {
@@ -26,48 +22,38 @@ public class CommandListener extends ListenerAdapter {
 
         if (message.startsWith("!addtimer")) {
             SelectMenu menu = createMapSelectMenu();
-
             event.getChannel().sendMessage("Please select a map from the dropdown.")
                 .setActionRow(menu)
                 .queue();
-
             userStates.put(userId, "awaiting_map_selection");
         } else if (userStates.getOrDefault(userId, "").equals("awaiting_time_input")) {
-            // Handle time input here
-            String time = message; // This is a simplification. You'd want to validate the format.
+            String time = message;
             bossManager.addTimer(userStates.get(userId + "_selected_map"), time);
             event.getChannel().sendMessage("Timer added for " + userStates.get(userId + "_selected_map") + " at " + time).queue();
             userStates.remove(userId);
             userStates.remove(userId + "_selected_map");
+            sendTimersToChannel((TextChannel) event.getChannel());
         }
     }
 
     @Override
     public void onGenericInteractionCreate(GenericInteractionCreateEvent event) {
-        Interaction interaction = event.getInteraction();
-        
-        if (interaction instanceof SelectMenuInteraction<?, ?>) {
-            SelectMenuInteraction<?, ?> selectMenu = (SelectMenuInteraction<?, ?>) interaction;
-            
-            // Handle the select menu interaction
+        if (event.getInteraction() instanceof SelectMenuInteraction<?, ?>) {
+            SelectMenuInteraction<?, ?> selectMenu = (SelectMenuInteraction<?, ?>) event.getInteraction();
             String userId = selectMenu.getUser().getId();
-            String customId = selectMenu.getComponentId();
-    
-            logger.info("Received interaction with custom ID: " + customId);
+
+            String customId = selectMenu.getComponentId(); 
     
             if (customId.equals("map-selector") && "awaiting_map_selection".equals(userStates.get(userId))) {
-                String selectedMap = (String) selectMenu.getValues().get(0).toString(); // Explicitly convert to String
-    
-                logger.info("User " + userId + " selected map: " + selectedMap);
-    
-                // Now, ask the user to provide the time for the selected map
-                selectMenu.reply("You selected " + selectedMap + ". Please provide the time.").queue();
-    
+                String selectedMap = (String) selectMenu.getValues().get(0); // Cast to String
+                selectMenu.getChannel().sendMessage("You selected " + selectedMap + ". Please provide the time.").queue();
                 userStates.put(userId, "awaiting_time_input");
                 userStates.put(userId + "_selected_map", selectedMap);
             }
         }
     }
+    
+
     
 
     private SelectMenu createMapSelectMenu() {
@@ -93,5 +79,12 @@ public class CommandListener extends ListenerAdapter {
                 .setPlaceholder("Choose a map...")
                 .setRequiredRange(1, 1)
                 .build();
+    }
+    private void sendTimersToChannel(TextChannel channel) {
+        StringBuilder timersTable = new StringBuilder("Timers:\n");
+        for (Map.Entry<String, String> entry : bossManager.getAllTimers().entrySet()) {
+            timersTable.append(entry.getKey()).append(": ").append(entry.getValue()).append("\n");
+        }
+        channel.sendMessage(timersTable.toString()).queue();
     }
 }
