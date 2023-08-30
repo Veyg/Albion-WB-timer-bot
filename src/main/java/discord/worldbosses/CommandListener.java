@@ -7,11 +7,15 @@ import net.dv8tion.jda.api.interactions.Interaction;
 import net.dv8tion.jda.api.interactions.components.selections.SelectMenu;
 import net.dv8tion.jda.api.interactions.components.selections.SelectMenuInteraction;
 import net.dv8tion.jda.api.interactions.components.selections.StringSelectMenu;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class CommandListener extends ListenerAdapter {
+    private static final Logger logger = LoggerFactory.getLogger(CommandListener.class);
+
     private BossManager bossManager = new BossManager();
     private Map<String, String> userStates = new HashMap<>(); // To track user's current interaction state
 
@@ -21,7 +25,6 @@ public class CommandListener extends ListenerAdapter {
         String userId = event.getAuthor().getId();
 
         if (message.startsWith("!addtimer")) {
-            System.out.println("Received !addtimer command.");
             SelectMenu menu = createMapSelectMenu();
 
             event.getChannel().sendMessage("Please select a map from the dropdown.")
@@ -41,39 +44,52 @@ public class CommandListener extends ListenerAdapter {
 
     @Override
     public void onGenericInteractionCreate(GenericInteractionCreateEvent event) {
-        System.out.println("Received an interaction event.");
-
         Interaction interaction = event.getInteraction();
         
         if (interaction instanceof SelectMenuInteraction<?, ?>) {
-            System.out.println("Interaction is of type SelectMenuInteraction.");
-
             SelectMenuInteraction<?, ?> selectMenu = (SelectMenuInteraction<?, ?>) interaction;
             
+            // Handle the select menu interaction
             String userId = selectMenu.getUser().getId();
-            System.out.println("User ID: " + userId);
-            System.out.println("SelectMenu ID: " + selectMenu.getId());
-            System.out.println("User state: " + userStates.get(userId));
-
-            if (selectMenu.getId().equals("map-selector") && "awaiting_map_selection".equals(userStates.get(userId))) {
-                System.out.println("Inside the map selection logic.");
-
-                String selectedMap = (String) selectMenu.getValues().get(0); // Get the first selected value
-
+            String customId = selectMenu.getComponentId();
+    
+            logger.info("Received interaction with custom ID: " + customId);
+    
+            if (customId.equals("map-selector") && "awaiting_map_selection".equals(userStates.get(userId))) {
+                String selectedMap = (String) selectMenu.getValues().get(0).toString(); // Explicitly convert to String
+    
+                logger.info("User " + userId + " selected map: " + selectedMap);
+    
                 // Now, ask the user to provide the time for the selected map
-                selectMenu.getChannel().sendMessage("You selected " + selectedMap + ". Please provide the time.").queue();
-
+                selectMenu.reply("You selected " + selectedMap + ". Please provide the time.").queue();
+    
                 userStates.put(userId, "awaiting_time_input");
                 userStates.put(userId + "_selected_map", selectedMap);
             }
         }
     }
+    
 
     private SelectMenu createMapSelectMenu() {
         return StringSelectMenu.create("map-selector")
-                .addOption("Map 1", "map1_value")
-                .addOption("Map 2", "map2_value")
-                // ... add more maps as needed
+                .addOption("Deathwisp Sink", "Deathwisp Sink")
+                .addOption("Drownfield Wetland", "Drownfield Wetland")
+                .addOption("Dryvein Steppe", "Dryvein Steppe")
+                .addOption("Farshore Heath", "Farshore Heath")
+                .addOption("Hightree Levee", "Hightree Levee")
+                .addOption("Longfen Arms", "Longfen Arms")
+                .addOption("Longfen Veins", "Longfen Veins")
+                .addOption("Longtimber Glen", "Longtimber Glen")
+                .addOption("Rivercopse Fount", "Rivercopse Fount")
+                .addOption("Runnelvein Bog", "Runnelvein Bog")
+                .addOption("Skysand Ridge", "Skysand Ridge")
+                .addOption("Sunfang Cliffs", "Sunfang Cliffs")
+                .addOption("Sunfang Dawn", "Sunfang Dawn")
+                .addOption("Sunstrand Dunes", "Sunstrand Dunes")
+                .addOption("Timberslope Grove", "Timberslope Grove")
+                .addOption("Timbertop Dale", "Timbertop Dale")
+                .addOption("Watchwood Bluffs", "Watchwood Bluffs")
+                .addOption("Westweald Shore", "Westweald Shore")
                 .setPlaceholder("Choose a map...")
                 .setRequiredRange(1, 1)
                 .build();
