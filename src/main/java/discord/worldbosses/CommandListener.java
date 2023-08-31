@@ -43,11 +43,15 @@ public class CommandListener extends ListenerAdapter {
                 event.getChannel().sendMessage("You need administrator permissions to set the designated channel.").queue();
             }
         } else if (message.startsWith("!addtimer")) {
-            SelectMenu menu = createMapSelectMenu();
-            event.getChannel().sendMessage("Please select a map from the dropdown.")
-                .setActionRow(menu)
-                .queue();
-            userStates.put(userId, "awaiting_map_selection");
+            if (event.getChannel().getId().equals(designatedChannelId)) { // Check if the command is in the designated channel
+                SelectMenu menu = createMapSelectMenu();
+                event.getChannel().sendMessage("Please select a map from the dropdown.")
+                    .setActionRow(menu)
+                    .queue();
+                userStates.put(userId, "awaiting_map_selection");
+            } else {
+                event.getChannel().sendMessage("This command can only be used in the designated channel.").queue();
+            }
         } else if (userStates.getOrDefault(userId, "").equals("awaiting_time_input")) {
             String time = message;
             bossManager.addTimer(userStates.get(userId + "_selected_map"), time);
