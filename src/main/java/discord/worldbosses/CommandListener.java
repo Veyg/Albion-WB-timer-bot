@@ -28,39 +28,61 @@ public class CommandListener extends ListenerAdapter {
         // Schedule the task to run every 5 minutes
         scheduler.scheduleAtFixedRate(this::updateTimers, 0, 5, TimeUnit.MINUTES);
     }
-
     @Override
     public void onMessageReceived(MessageReceivedEvent event) {
+        // Check if the message is sent by a bot. If yes, return immediately.
+        if (event.getAuthor().isBot()) {
+            return;
+        }
+    
         this.jda = event.getJDA();
         String message = event.getMessage().getContentRaw();
         String userId = event.getAuthor().getId();
-
+    
         if (message.startsWith("!setDesignatedChannel")) {
             if (event.getMember().hasPermission(Permission.ADMINISTRATOR)) {
                 designatedChannelId = event.getChannel().getId();
-                event.getChannel().sendMessage("This channel is now set as the designated channel for timers.").queue();
+                event.getChannel().sendMessage("This channel is now set as the designated channel for timers.")
+                    .queue(response -> {
+                        response.delete().queueAfter(10, TimeUnit.SECONDS); // Delete bot's message after 5 seconds
+                    });
             } else {
-                event.getChannel().sendMessage("You need administrator permissions to set the designated channel.").queue();
+                event.getChannel().sendMessage("You need administrator permissions to set the designated channel.")
+                    .queue(response -> {
+                        response.delete().queueAfter(10, TimeUnit.SECONDS); // Delete bot's message after 5 seconds
+                    });
             }
+            event.getMessage().delete().queue(); // Delete user's command message
         } else if (message.startsWith("!addtimer")) {
             if (event.getChannel().getId().equals(designatedChannelId)) { // Check if the command is in the designated channel
                 SelectMenu menu = createMapSelectMenu();
                 event.getChannel().sendMessage("Please select a map from the dropdown.")
                     .setActionRow(menu)
-                    .queue();
+                    .queue(response -> {
+                        response.delete().queueAfter(10, TimeUnit.SECONDS); // Delete bot's message after 5 seconds
+                    });
                 userStates.put(userId, "awaiting_map_selection");
             } else {
-                event.getChannel().sendMessage("This command can only be used in the designated channel.").queue();
+                event.getChannel().sendMessage("This command can only be used in the designated channel.")
+                    .queue(response -> {
+                        response.delete().queueAfter(10, TimeUnit.SECONDS); // Delete bot's message after 5 seconds
+                    });
             }
+            event.getMessage().delete().queue(); // Delete user's command message
         } else if (userStates.getOrDefault(userId, "").equals("awaiting_time_input")) {
             String time = message;
             bossManager.addTimer(userStates.get(userId + "_selected_map"), time);
-            event.getChannel().sendMessage("Timer added for " + userStates.get(userId + "_selected_map") + " at " + time).queue();
+            event.getChannel().sendMessage("Timer added for " + userStates.get(userId + "_selected_map") + " at " + time)
+                .queue(response -> {
+                    response.delete().queueAfter(10, TimeUnit.SECONDS); // Delete bot's message after 5 seconds
+                });
             userStates.remove(userId);
             userStates.remove(userId + "_selected_map");
             sendTimersToChannel();
+            event.getMessage().delete().queue(); // Delete user's command message
         }
-    }
+    }    
+    
 
     @Override
     public void onGenericInteractionCreate(GenericInteractionCreateEvent event) {
@@ -68,12 +90,15 @@ public class CommandListener extends ListenerAdapter {
         if (event.getInteraction() instanceof SelectMenuInteraction<?, ?>) {
             SelectMenuInteraction<?, ?> selectMenu = (SelectMenuInteraction<?, ?>) event.getInteraction();
             String userId = selectMenu.getUser().getId();
-
+    
             String customId = selectMenu.getComponentId(); 
-
+    
             if (customId.equals("map-selector") && "awaiting_map_selection".equals(userStates.get(userId))) {
                 String selectedMap = (String) selectMenu.getValues().get(0);
-                selectMenu.getChannel().sendMessage("You selected " + selectedMap + ". Please provide the time.").queue();
+                selectMenu.getChannel().sendMessage("You selected " + selectedMap + ". Please provide the time.")
+                    .queue(response -> {
+                        response.delete().queueAfter(5, TimeUnit.SECONDS); // Delete bot's message after 5 seconds
+                    });
                 userStates.put(userId, "awaiting_time_input");
                 userStates.put(userId + "_selected_map", selectedMap);
             }
