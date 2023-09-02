@@ -20,8 +20,9 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.ArrayList;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-
+import java.time.temporal.ChronoUnit;
 
 public class CommandListener extends ListenerAdapter {
     private BossManager bossManager = new BossManager();
@@ -151,32 +152,38 @@ public class CommandListener extends ListenerAdapter {
 
     private void sendTimersToChannel() {
         if (designatedChannelId == null) return; // No designated channel set
-
+    
         TextChannel designatedChannel = jda.getTextChannelById(designatedChannelId);
         if (designatedChannel == null) return; // Designated channel not found
-
+    
         EmbedBuilder embed = new EmbedBuilder();
         embed.setTitle("World Boss Timers");
-        embed.setColor(0x00FFFF); // Cyan color
-
-        // Convert the map to a list and sort it
+        embed.setColor(0x00FFFF);
+    
+        // Sort the timers by date and time
         List<Map.Entry<String, String>> sortedTimers = new ArrayList<>(bossManager.getAllTimers().entrySet());
         sortedTimers.sort(Comparator.comparing(e -> {
             String[] parts = e.getValue().split(" ");
-            return parts[0]; // This assumes the time is always the first part of the value
+            return LocalDate.parse(parts[1], DateTimeFormatter.ofPattern("d/MM/yyyy")).atTime(LocalTime.parse(parts[0], DateTimeFormatter.ofPattern("HH:mm:ss")));
         }));
-
-        StringBuilder mapNames = new StringBuilder();
-        StringBuilder times = new StringBuilder();
-
-        for (Map.Entry<String, String> entry : sortedTimers) {
-            mapNames.append(entry.getKey()).append("\n");
-            times.append(entry.getValue()).append("\n");
+    
+        // Check if the first timer is within the next 12 hours
+        String[] nextTimerParts = sortedTimers.get(0).getValue().split(" ");
+        LocalTime nextTimerLocalTime = LocalTime.parse(nextTimerParts[0], DateTimeFormatter.ofPattern("HH:mm:ss"));
+        LocalDate nextTimerLocalDate = LocalDate.parse(nextTimerParts[1], DateTimeFormatter.ofPattern("d/MM/yyyy"));
+        long hoursDifference = ChronoUnit.HOURS.between(LocalTime.now(), nextTimerLocalTime);
+        long daysDifference = ChronoUnit.DAYS.between(LocalDate.now(), nextTimerLocalDate);
+    
+        if (daysDifference == 0 && hoursDifference <= 12) {
+            embed.addField("🚨 Coming up:", "**" + sortedTimers.get(0).getKey() + " - " + nextTimerParts[0] + " UTC " + nextTimerParts[1] + "**", false);
+            sortedTimers.remove(0); // Remove the first timer as it's already displayed
         }
-
-        embed.addField("Map", mapNames.toString(), true);
-        embed.addField("Time & Date", times.toString(), true);
-
+    
+        for (Map.Entry<String, String> entry : sortedTimers) {
+            String[] timerParts = entry.getValue().split(" ");
+            embed.addField(entry.getKey(), timerParts[0] + " UTC " + timerParts[1], false); // Set inline to false to ensure each timer is on a new line
+        }
+    
         if (timerMessageId == null) {
             // If the timer message hasn't been sent yet, send it
             designatedChannel.sendMessageEmbeds(embed.build()).queue(message -> {
@@ -187,6 +194,8 @@ public class CommandListener extends ListenerAdapter {
             designatedChannel.editMessageEmbedsById(timerMessageId, embed.build()).queue();
         }
     }
+    
+    
 
     private void updateTimers() {
         if (timerMessageId != null) {
