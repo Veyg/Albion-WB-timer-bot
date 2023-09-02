@@ -11,12 +11,14 @@ import net.dv8tion.jda.api.interactions.components.selections.SelectMenu;
 import net.dv8tion.jda.api.interactions.components.selections.SelectMenuInteraction;
 import net.dv8tion.jda.api.interactions.components.selections.StringSelectMenu;
 
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
+import java.util.ArrayList;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
@@ -155,10 +157,25 @@ public class CommandListener extends ListenerAdapter {
 
         EmbedBuilder embed = new EmbedBuilder();
         embed.setTitle("World Boss Timers");
-        embed.setColor(0x00FFFF);
-        for (Map.Entry<String, String> entry : bossManager.getAllTimers().entrySet()) {
-            embed.addField(entry.getKey(), entry.getValue(), true);
+        embed.setColor(0x00FFFF); // Cyan color
+
+        // Convert the map to a list and sort it
+        List<Map.Entry<String, String>> sortedTimers = new ArrayList<>(bossManager.getAllTimers().entrySet());
+        sortedTimers.sort(Comparator.comparing(e -> {
+            String[] parts = e.getValue().split(" ");
+            return parts[0]; // This assumes the time is always the first part of the value
+        }));
+
+        StringBuilder mapNames = new StringBuilder();
+        StringBuilder times = new StringBuilder();
+
+        for (Map.Entry<String, String> entry : sortedTimers) {
+            mapNames.append(entry.getKey()).append("\n");
+            times.append(entry.getValue()).append("\n");
         }
+
+        embed.addField("Map", mapNames.toString(), true);
+        embed.addField("Time & Date", times.toString(), true);
 
         if (timerMessageId == null) {
             // If the timer message hasn't been sent yet, send it
@@ -170,6 +187,7 @@ public class CommandListener extends ListenerAdapter {
             designatedChannel.editMessageEmbedsById(timerMessageId, embed.build()).queue();
         }
     }
+
     private void updateTimers() {
         if (timerMessageId != null) {
             TextChannel channel = jda.getTextChannelById(designatedChannelId);
