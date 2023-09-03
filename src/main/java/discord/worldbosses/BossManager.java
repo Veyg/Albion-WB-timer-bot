@@ -32,6 +32,16 @@ public class BossManager {
             e.printStackTrace();
         }
     }
+    public void editTimer(String mapName, String newTime) {
+        mapTimers.put(mapName, newTime);
+        saveTimers();
+    }
+    
+    public void deleteTimer(String mapName) {
+        mapTimers.remove(mapName);
+        saveTimers();
+    }
+    
 
     @SuppressWarnings("unchecked")
     private void loadTimers() {

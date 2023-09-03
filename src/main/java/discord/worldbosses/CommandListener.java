@@ -15,27 +15,20 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.ArrayList;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 
 public class CommandListener extends ListenerAdapter {
     private BossManager bossManager = new BossManager();
     private Map<String, String> userStates = new HashMap<>();
     private String timerMessageId; // Store the ID of the timer message
-    private ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private JDA jda;
     private String designatedChannelId;
-
-    public CommandListener() {
-        // Schedule the task to run every 5 minutes
-        scheduler.scheduleAtFixedRate(this::updateTimers, 0, 5, TimeUnit.MINUTES);
-    }
 
     @Override
     public void onMessageReceived(MessageReceivedEvent event) {
@@ -55,6 +48,7 @@ public class CommandListener extends ListenerAdapter {
                         .queue(response -> {
                             response.delete().queueAfter(10, TimeUnit.SECONDS); // Delete bot's message after 5 seconds
                         });
+                sendTimersToChannel();
             } else {
                 event.getChannel().sendMessage("You need administrator permissions to set the designated channel.")
                         .queue(response -> {
@@ -80,15 +74,27 @@ public class CommandListener extends ListenerAdapter {
             }
             event.getMessage().delete().queue(); // Delete user's command message
         } else if (userStates.getOrDefault(userId, "").equals("awaiting_time_input")) {
-            String time = message;
+            System.out.println("Received time input: " + message); // Logging the input
 
-            // Get the date two days from now
+            DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+            LocalTime parsedTime = null;
+
+            try {
+                parsedTime = LocalTime.parse(message, timeFormatter);
+                System.out.println("Successfully parsed time: " + parsedTime); // Logging successful parsing
+            } catch (DateTimeParseException e) {
+                System.out.println("Error parsing time: " + e.getMessage()); // Logging the error
+                event.getChannel().sendMessage("Invalid time format. Please use HH:mm:ss format.").queue();
+                return; // Exit the method if parsing fails
+            }
+
+            // If we reach here, it means parsing was successful
             LocalDate twoDaysLater = LocalDate.now().plusDays(2);
             DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("d/MM/yyyy");
             String formattedDate = twoDaysLater.format(dateFormatter);
 
             // Append the date to the time
-            String fullTime = time + " " + formattedDate;
+            String fullTime = parsedTime.toString() + " " + formattedDate;
 
             bossManager.addTimer(userStates.get(userId + "_selected_map"), fullTime);
             event.getChannel()
@@ -100,6 +106,37 @@ public class CommandListener extends ListenerAdapter {
             userStates.remove(userId + "_selected_map");
             sendTimersToChannel();
             event.getMessage().delete().queue(); // Delete user's command message
+
+        } else if (message.startsWith("!editTimer")) {
+            String[] parts = message.split(" ", 4);
+            if (parts.length == 4) {
+                String mapName = parts[1];
+                String newTime = parts[2];
+                String newDate = parts[3];
+                bossManager.editTimer(mapName, newTime + " " + newDate);
+                event.getChannel().sendMessage("Timer for " + mapName + " updated to " + newTime + " on " + newDate)
+                        .queue(response -> {
+                            response.delete().queueAfter(5, TimeUnit.SECONDS);
+                        });
+                sendTimersToChannel();
+            } else {
+                event.getChannel()
+                        .sendMessage("Invalid command format. Use '!editTimer [mapName] [HH:MM:SS] [d/MM/yyyy]'")
+                        .queue();
+            }
+
+        } else if (message.startsWith("!deleteTimer")) {
+            String[] parts = message.split(" ", 2);
+            if (parts.length == 2) {
+                String mapName = parts[1];
+                bossManager.deleteTimer(mapName);
+                event.getChannel().sendMessage("Timer for " + mapName + " deleted.").queue(response -> {
+                    response.delete().queueAfter(10, TimeUnit.SECONDS);
+                });
+                sendTimersToChannel();
+            } else {
+                event.getChannel().sendMessage("Invalid command format. Use `!deleteTimer [MapName]`").queue();
+            }
         }
 
     }
@@ -151,63 +188,67 @@ public class CommandListener extends ListenerAdapter {
     }
 
     private void sendTimersToChannel() {
-        if (designatedChannelId == null) return; // No designated channel set
+        if (designatedChannelId == null) {
+            System.out.println("Designated channel ID is null.");
+            return; // No designated channel set
+        }
     
         TextChannel designatedChannel = jda.getTextChannelById(designatedChannelId);
-        if (designatedChannel == null) return; // Designated channel not found
+        if (designatedChannel == null) {
+            System.out.println("Designated channel not found.");
+            return; // Designated channel not found
+        }
+    
+        Map<String, String> allTimers = bossManager.getAllTimers();
+        if (allTimers.isEmpty()) {
+            System.out.println("No timers to send.");
+            return; // No timers to send
+        }
     
         EmbedBuilder embed = new EmbedBuilder();
         embed.setTitle("World Boss Timers");
         embed.setColor(0x00FFFF);
     
         // Sort the timers by date and time
-        List<Map.Entry<String, String>> sortedTimers = new ArrayList<>(bossManager.getAllTimers().entrySet());
+        List<Map.Entry<String, String>> sortedTimers = new ArrayList<>(allTimers.entrySet());
         sortedTimers.sort(Comparator.comparing(e -> {
             String[] parts = e.getValue().split(" ");
-            return LocalDate.parse(parts[1], DateTimeFormatter.ofPattern("d/MM/yyyy")).atTime(LocalTime.parse(parts[0], DateTimeFormatter.ofPattern("HH:mm:ss")));
+            return LocalDate.parse(parts[1], DateTimeFormatter.ofPattern("d/MM/yyyy"))
+                    .atTime(LocalTime.parse(parts[0], DateTimeFormatter.ofPattern("HH:mm:ss")));
         }));
     
         // Check if the first timer is within the next 12 hours
         String[] nextTimerParts = sortedTimers.get(0).getValue().split(" ");
-        LocalTime nextTimerLocalTime = LocalTime.parse(nextTimerParts[0], DateTimeFormatter.ofPattern("HH:mm:ss"));
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+        System.out.println("Trying to parse the time" + nextTimerParts[0] + " " + nextTimerParts[1]);
+        LocalTime nextTimerLocalTime = LocalTime.parse(nextTimerParts[0], timeFormatter);
         LocalDate nextTimerLocalDate = LocalDate.parse(nextTimerParts[1], DateTimeFormatter.ofPattern("d/MM/yyyy"));
         long hoursDifference = ChronoUnit.HOURS.between(LocalTime.now(), nextTimerLocalTime);
         long daysDifference = ChronoUnit.DAYS.between(LocalDate.now(), nextTimerLocalDate);
     
         if (daysDifference == 0 && hoursDifference <= 12) {
-            embed.addField("🚨 Coming up:", "**" + sortedTimers.get(0).getKey() + " - " + nextTimerParts[0] + " UTC " + nextTimerParts[1] + "**", false);
+            embed.addField("🚨 Coming up:", "**" + sortedTimers.get(0).getKey() + " - " + nextTimerParts[0] + " UTC "
+                    + nextTimerParts[1] + "**", false);
             sortedTimers.remove(0); // Remove the first timer as it's already displayed
         }
     
         for (Map.Entry<String, String> entry : sortedTimers) {
             String[] timerParts = entry.getValue().split(" ");
-            embed.addField(entry.getKey(), timerParts[0] + " UTC " + timerParts[1], false); // Set inline to false to ensure each timer is on a new line
+            embed.addField(entry.getKey(), timerParts[0] + " UTC " + timerParts[1], false);
         }
     
         if (timerMessageId == null) {
             // If the timer message hasn't been sent yet, send it
             designatedChannel.sendMessageEmbeds(embed.build()).queue(message -> {
                 timerMessageId = message.getId();
+            }, throwable -> {
+                System.out.println("Error sending message: " + throwable.getMessage());
             });
         } else {
             // If the timer message has already been sent, edit it
-            designatedChannel.editMessageEmbedsById(timerMessageId, embed.build()).queue();
-        }
-    }
-    
-    
-
-    private void updateTimers() {
-        if (timerMessageId != null) {
-            TextChannel channel = jda.getTextChannelById(designatedChannelId);
-            if (channel != null) {
-                StringBuilder timersTable = new StringBuilder("Timers:\n");
-                for (Map.Entry<String, String> entry : bossManager.getAllTimers().entrySet()) {
-                    timersTable.append("**").append(entry.getKey()).append("**: `").append(entry.getValue())
-                            .append("`\n");
-                }
-                channel.editMessageById(timerMessageId, timersTable.toString()).queue();
-            }
+            designatedChannel.editMessageEmbedsById(timerMessageId, embed.build()).queue(null, throwable -> {
+                System.out.println("Error editing message: " + throwable.getMessage());
+            });
         }
     }
 }
