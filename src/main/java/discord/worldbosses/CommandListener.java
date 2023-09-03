@@ -220,9 +220,9 @@ public class CommandListener extends ListenerAdapter {
         // Check if the first timer is within the next 12 hours
         String[] nextTimerParts = sortedTimers.get(0).getValue().split(" ");
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
-        System.out.println("Trying to parse the time" + nextTimerParts[0] + " " + nextTimerParts[1]);
+        System.out.println("Trying to parse the time: " + nextTimerParts[0] + " " + nextTimerParts[1]);
         LocalTime nextTimerLocalTime = LocalTime.parse(nextTimerParts[0], timeFormatter);
-        LocalDate nextTimerLocalDate = LocalDate.parse(nextTimerParts[1], DateTimeFormatter.ofPattern("d/MM/yyyy"));
+        LocalDate nextTimerLocalDate = LocalDate.parse(nextTimerParts[1], DateTimeFormatter.ofPattern("d/MM/yyyy"));    
         long hoursDifference = ChronoUnit.HOURS.between(LocalTime.now(), nextTimerLocalTime);
         long daysDifference = ChronoUnit.DAYS.between(LocalDate.now(), nextTimerLocalDate);
     

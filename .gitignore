@@ -25,3 +25,4 @@ replay_pid*
 
 #Crucial data files - not for public consumption
 *.dat
+timers.json
