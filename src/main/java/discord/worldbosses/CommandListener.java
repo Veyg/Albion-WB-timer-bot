@@ -334,6 +334,10 @@ public class CommandListener extends ListenerAdapter {
         LocalDateTime notificationTime = bossSpawnTime.minusMinutes(20);
         long delay = LocalDateTime.now(ZoneOffset.UTC).until(notificationTime, ChronoUnit.SECONDS);
     
+        System.out.println("Scheduling boss notification for: " + time);
+        System.out.println("Current time: " + LocalDateTime.now(ZoneOffset.UTC));
+        System.out.println("Calculated delay in seconds: " + delay);
+    
         scheduler.schedule(() -> sendBossNotification(mapName, time), delay, TimeUnit.SECONDS);
     }
     
