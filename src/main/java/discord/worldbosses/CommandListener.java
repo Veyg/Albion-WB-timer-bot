@@ -208,7 +208,7 @@ public class CommandListener extends ListenerAdapter {
                 selectMenu.getMessage().delete().queue();
 
                 scheduleBossNotification(selectedMap, fullTime);
-            } else if (customId.equals("map-selector") && "awaiting_map_selection".equals(userStates.get(userId))) {
+            } else if (customId.equals("map-sele ctor") && "awaiting_map_selection".equals(userStates.get(userId))) {
                 // This is for other functionalities that might require map selection without
                 // adding a timer
             }
@@ -351,5 +351,4 @@ public class CommandListener extends ListenerAdapter {
             }
         }, delay, TimeUnit.SECONDS);
     }
-    
 }
