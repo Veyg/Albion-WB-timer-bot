@@ -7,6 +7,7 @@ import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.components.selections.SelectMenu;
 import net.dv8tion.jda.api.interactions.components.selections.SelectMenuInteraction;
@@ -86,6 +87,7 @@ public class CommandListener extends ListenerAdapter {
                 } catch (DateTimeParseException e) {
                     System.out.println("Error parsing time: " + e.getMessage()); // Logging the error
                     event.getChannel().sendMessage("Invalid time format. Please use HH:mm:ss format.").queue();
+                    //TODO:  add self delete
                     return; // Exit the method if parsing fails
                 }
 
@@ -300,11 +302,20 @@ public class CommandListener extends ListenerAdapter {
                 System.out.println("Error sending message: " + throwable.getMessage());
             });
         } else {
-            // If the timer message has already been sent, edit it
+            // Try to edit the message
             designatedChannel.editMessageEmbedsById(timerMessageId, embed.build()).queue(null, throwable -> {
-                System.out.println("Error editing message: " + throwable.getMessage());
+                // If there's an error editing the message, check if it's the "Unknown Message" error
+                if (throwable instanceof ErrorResponseException && ((ErrorResponseException) throwable).getErrorCode() == 10008) {
+                    // If the message doesn't exist, send a new one
+                    designatedChannel.sendMessageEmbeds(embed.build()).queue(message -> {
+                        timerMessageId = message.getId();
+                    });
+                } else {
+                    System.out.println("Error editing message: " + throwable.getMessage());
+                }
             });
         }
+     
     }
     private void sendBossNotification(String mapName, String time) {
         if (designatedChannelId == null) return;
@@ -321,13 +332,13 @@ public class CommandListener extends ListenerAdapter {
     }
     public void onButtonInteraction(ButtonInteraction event) {
         if (event.getComponentId().equals("boss_killed")) {
-            // Handle boss killed
+            //TODO:  Handle boss killed
             event.reply("Boss was killed!").queue();
         } else if (event.getComponentId().equals("boss_skipped")) {
-            // Handle boss skipped
+            //TODO:  Handle boss skipped
             event.reply("Boss was skipped!").queue();
         } else if (event.getComponentId().equals("boss_forgot")) {
-            // Handle boss forgot
+            //TODO:  Handle boss forgot
             event.reply("Boss was forgotten!").queue();
         }
     }
