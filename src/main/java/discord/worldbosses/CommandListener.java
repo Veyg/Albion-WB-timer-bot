@@ -15,7 +15,6 @@ import net.dv8tion.jda.api.interactions.components.selections.StringSelectMenu;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.interactions.components.buttons.ButtonInteraction;
 
-
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -56,13 +55,23 @@ public class CommandListener extends ListenerAdapter {
                 designatedChannelId = event.getChannel().getId();
                 event.getChannel().sendMessage("This channel is now set as the designated channel for timers.")
                         .queue(response -> {
-                            response.delete().queueAfter(10, TimeUnit.SECONDS); // Delete bot's message after 5 seconds
+                            response.delete().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
+                                if (throwable instanceof ErrorResponseException) {
+                                    System.out.println("Error deleting message with ID: " + response.getId()
+                                            + ". Error: " + throwable.getMessage());
+                                }
+                            });
                         });
                 sendTimersToChannel();
             } else {
                 event.getChannel().sendMessage("You need administrator permissions to set the designated channel.")
                         .queue(response -> {
-                            response.delete().queueAfter(10, TimeUnit.SECONDS); // Delete bot's message after 5 seconds
+                            response.delete().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
+                                if (throwable instanceof ErrorResponseException) {
+                                    System.out.println("Error deleting message with ID: " + response.getId()
+                                            + ". Error: " + throwable.getMessage());
+                                }
+                            });
                         });
             }
             event.getMessage().delete().queue(); // Delete user's command message
@@ -70,7 +79,12 @@ public class CommandListener extends ListenerAdapter {
             if (!event.getChannel().getId().equals(designatedChannelId)) {
                 event.getChannel().sendMessage("This command can only be used in the designated channel.")
                         .queue(response -> {
-                            response.delete().queueAfter(10, TimeUnit.SECONDS); // Delete bot's message after 10 seconds
+                            response.delete().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
+                                if (throwable instanceof ErrorResponseException) {
+                                    System.out.println("Error deleting message with ID: " + response.getId()
+                                            + ". Error: " + throwable.getMessage());
+                                }
+                            });
                         });
                 return; // Exit the method early
             }
@@ -87,7 +101,7 @@ public class CommandListener extends ListenerAdapter {
                 } catch (DateTimeParseException e) {
                     System.out.println("Error parsing time: " + e.getMessage()); // Logging the error
                     event.getChannel().sendMessage("Invalid time format. Please use HH:mm:ss format.").queue();
-                    //TODO:  add self delete
+                    // TODO: add self delete
                     return; // Exit the method if parsing fails
                 }
 
@@ -105,7 +119,12 @@ public class CommandListener extends ListenerAdapter {
                 event.getChannel().sendMessage("Please select a map from the dropdown.")
                         .setActionRow(menu)
                         .queue(response -> {
-                            response.delete().queueAfter(10, TimeUnit.SECONDS); // Delete bot's message after 10 seconds
+                            response.delete().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
+                                if (throwable instanceof ErrorResponseException) {
+                                    System.out.println("Error deleting message with ID: " + response.getId()
+                                            + ". Error: " + throwable.getMessage());
+                                }
+                            });
                         });
                 userStates.put(userId, "awaiting_map_selection_for_add");
             } else {
@@ -139,7 +158,12 @@ public class CommandListener extends ListenerAdapter {
             event.getChannel()
                     .sendMessage("Timer added for " + userStates.get(userId + "_selected_map") + " at " + fullTime)
                     .queue(response -> {
-                        response.delete().queueAfter(10, TimeUnit.SECONDS); // Delete bot's message after 10 seconds
+                        response.delete().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
+                            if (throwable instanceof ErrorResponseException) {
+                                System.out.println("Error deleting message with ID: " + response.getId() + ". Error: "
+                                        + throwable.getMessage());
+                            }
+                        });
                     });
             userStates.remove(userId);
             userStates.remove(userId + "_selected_map");
@@ -155,7 +179,12 @@ public class CommandListener extends ListenerAdapter {
                 bossManager.editTimer(mapName, newTime + " " + newDate);
                 event.getChannel().sendMessage("Timer for " + mapName + " updated to " + newTime + " on " + newDate)
                         .queue(response -> {
-                            response.delete().queueAfter(5, TimeUnit.SECONDS);
+                            response.delete().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
+                                if (throwable instanceof ErrorResponseException) {
+                                    System.out.println("Error deleting message with ID: " + response.getId()
+                                            + ". Error: " + throwable.getMessage());
+                                }
+                            });
                         });
                 sendTimersToChannel();
             } else {
@@ -171,13 +200,18 @@ public class CommandListener extends ListenerAdapter {
                 String mapName = parts[1];
                 bossManager.deleteTimer(mapName);
                 event.getChannel().sendMessage("Timer for " + mapName + " deleted.").queue(response -> {
-                    response.delete().queueAfter(10, TimeUnit.SECONDS);
+                    response.delete().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
+                        if (throwable instanceof ErrorResponseException) {
+                            System.out.println("Error deleting message with ID: " + response.getId() + ". Error: "
+                                    + throwable.getMessage());
+                        }
+                    });
                 });
                 sendTimersToChannel();
             } else {
                 event.getChannel().sendMessage("Invalid command format. Use `!deleteTimer [MapName]`").queue();
             }
-            
+
         } else if (message.startsWith("!testNotification")) {
             sendBossNotification("TestMap", "20:00:00 1/01/2023");
             event.getMessage().delete().queue(); // Delete user's command message
@@ -202,7 +236,12 @@ public class CommandListener extends ListenerAdapter {
                 selectMenu.getChannel()
                         .sendMessage("Timer added for " + selectedMap + " at " + fullTime)
                         .queue(response -> {
-                            response.delete().queueAfter(10, TimeUnit.SECONDS); // Delete bot's message after 10 seconds
+                            response.delete().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
+                                if (throwable instanceof ErrorResponseException) {
+                                    System.out.println("Error deleting message with ID: " + response.getId()
+                                            + ". Error: " + throwable.getMessage());
+                                }
+                            });
                         });
                 userStates.remove(userId);
                 userStates.remove(userId + "_input_time");
@@ -281,7 +320,6 @@ public class CommandListener extends ListenerAdapter {
         long hoursDifference = ChronoUnit.HOURS.between(LocalTime.now(ZoneOffset.UTC), nextTimerLocalTime);
         LocalDate utcDate = LocalDate.now(ZoneOffset.UTC);
         long daysDifference = ChronoUnit.DAYS.between(utcDate, nextTimerLocalDate);
-        
 
         if (daysDifference == 0 && hoursDifference <= 12) {
             embed.addField("🚨 Coming up:", "**" + sortedTimers.get(0).getKey() + " - " + nextTimerParts[0] + " UTC "
@@ -304,8 +342,10 @@ public class CommandListener extends ListenerAdapter {
         } else {
             // Try to edit the message
             designatedChannel.editMessageEmbedsById(timerMessageId, embed.build()).queue(null, throwable -> {
-                // If there's an error editing the message, check if it's the "Unknown Message" error
-                if (throwable instanceof ErrorResponseException && ((ErrorResponseException) throwable).getErrorCode() == 10008) {
+                // If there's an error editing the message, check if it's the "Unknown Message"
+                // error
+                if (throwable instanceof ErrorResponseException
+                        && ((ErrorResponseException) throwable).getErrorCode() == 10008) {
                     // If the message doesn't exist, send a new one
                     designatedChannel.sendMessageEmbeds(embed.build()).queue(message -> {
                         timerMessageId = message.getId();
@@ -315,39 +355,45 @@ public class CommandListener extends ListenerAdapter {
                 }
             });
         }
-     
-    }
-    private void sendBossNotification(String mapName, String time) {
-        if (designatedChannelId == null) return;
-        TextChannel designatedChannel = jda.getTextChannelById(designatedChannelId);
-        if (designatedChannel == null) return;
 
-        Button killedButton = Button.primary("boss_killed", "Killed").withEmoji(Emoji.fromUnicode("🐘")); // Mammoth emoji
+    }
+
+    private void sendBossNotification(String mapName, String time) {
+        if (designatedChannelId == null)
+            return;
+        TextChannel designatedChannel = jda.getTextChannelById(designatedChannelId);
+        if (designatedChannel == null)
+            return;
+
+        Button killedButton = Button.primary("boss_killed", "Killed").withEmoji(Emoji.fromUnicode("🐘")); // Mammoth
+                                                                                                          // emoji
         Button skippedButton = Button.secondary("boss_skipped", "Skipped").withEmoji(Emoji.fromUnicode("🕣"));
         Button forgotButton = Button.danger("boss_forgot", "Forgot").withEmoji(Emoji.fromUnicode("❓"));
 
         designatedChannel.sendMessage("@everyone\n**WORLD BOSS SPAWNING SOON**\nMap: " + mapName + "\nTime: " + time)
-            .setActionRow(killedButton, skippedButton, forgotButton)
-            .queue();
+                .setActionRow(killedButton, skippedButton, forgotButton)
+                .queue();
     }
+
     public void onButtonInteraction(ButtonInteraction event) {
         if (event.getComponentId().equals("boss_killed")) {
-            //TODO:  Handle boss killed
+            // TODO: Handle boss killed
             event.reply("Boss was killed!").queue();
         } else if (event.getComponentId().equals("boss_skipped")) {
-            //TODO:  Handle boss skipped
+            // TODO: Handle boss skipped
             event.reply("Boss was skipped!").queue();
         } else if (event.getComponentId().equals("boss_forgot")) {
-            //TODO:  Handle boss forgot
+            // TODO: Handle boss forgot
             event.reply("Boss was forgotten!").queue();
         }
     }
+
     private void scheduleBossNotification(String mapName, String time) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy");
         LocalDateTime bossSpawnTime = LocalDateTime.parse(time, formatter);
         LocalDateTime notificationTime = bossSpawnTime.minusMinutes(20);
         long delay = LocalDateTime.now(ZoneOffset.UTC).until(notificationTime, ChronoUnit.SECONDS);
-    
+
         System.out.println("Boss spawn time: " + bossSpawnTime);
         System.out.println("Notification time: " + notificationTime);
         System.out.println("Scheduling boss notification for: " + time);
