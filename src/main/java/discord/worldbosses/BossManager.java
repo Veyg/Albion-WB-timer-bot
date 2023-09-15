@@ -18,6 +18,7 @@ public class BossManager {
     }
 
     public void addTimer(String mapName, String time) {
+        System.out.println("Added timer for " + mapName + " at " + time);
         mapTimers.put(mapName, time);
         saveTimers();
     }
@@ -31,12 +32,14 @@ public class BossManager {
     }
 
     public void editTimer(String mapName, String newTime) {
+        System.out.println("Edited timer for " + mapName + " to " + newTime);
         mapTimers.put(mapName, newTime);
         saveTimers();
     }
 
     public void deleteTimer(String mapName) {
         mapTimers.remove(mapName);
+        System.out.println("Deleted timer for " + mapName);
         saveTimers();
     }
 
@@ -57,9 +60,11 @@ public class BossManager {
                 if (mapTimers == null) {
                     mapTimers = new HashMap<>();
                 }
+                System.out.println("Loaded timers: " + mapTimers);
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
-    }
+    }    
 }
+
