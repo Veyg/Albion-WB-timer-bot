@@ -117,14 +117,7 @@ public class CommandListener extends ListenerAdapter {
                 SelectMenu menu = createMapSelectMenu();
                 event.getChannel().sendMessage("Please select a map from the dropdown.")
                         .setActionRow(menu)
-                        .queue(response -> {
-                            response.delete().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
-                                if (throwable instanceof ErrorResponseException) {
-                                    System.out.println("Error deleting message with ID: " + response.getId()
-                                            + ". Error: " + throwable.getMessage());
-                                }
-                            });
-                        });
+                        .queue();
                 userStates.put(userId, "awaiting_map_selection_for_add");
             } else {
                 event.getChannel().sendMessage("Invalid command format. Use `!addtimer [HH:MM:SS]`").queue();
@@ -281,6 +274,7 @@ public class CommandListener extends ListenerAdapter {
     }
 
     private void sendTimersToChannel() {
+        System.out.println("Sending timers to channel");
         if (designatedChannelId == null) {
             System.out.println("Designated channel ID is null.");
             return; // No designated channel set
