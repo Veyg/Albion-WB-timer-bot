@@ -52,6 +52,7 @@ public class CommandListener extends ListenerAdapter {
         if (message.startsWith("!setDesignatedChannel")) {
             if (event.getMember().hasPermission(Permission.ADMINISTRATOR)) {
                 designatedChannelId = event.getChannel().getId();
+                System.out.println("Designated channel set to: " + designatedChannelId);
                 event.getChannel().sendMessage("This channel is now set as the designated channel for timers.")
                         .queue(response -> {
                             response.delete().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
@@ -87,32 +88,31 @@ public class CommandListener extends ListenerAdapter {
                         });
                 return; // Exit the method early
             }
-
+        
             String[] parts = message.split(" ", 2);
             if (parts.length == 2) {
                 String timeInput = parts[1];
                 DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
                 LocalTime parsedTime = null;
-
+        
                 try {
                     parsedTime = LocalTime.parse(timeInput, timeFormatter);
                     System.out.println("Successfully parsed time: " + parsedTime); // Logging successful parsing
                 } catch (DateTimeParseException e) {
                     System.out.println("Error parsing time: " + e.getMessage()); // Logging the error
                     event.getChannel().sendMessage("Invalid time format. Please use HH:mm:ss format.").queue();
-                    // TODO: add self delete
                     return; // Exit the method if parsing fails
                 }
-
+        
                 // If we reach here, it means parsing was successful
                 LocalDate twoDaysLater = LocalDate.now(ZoneOffset.UTC).plusDays(2);
                 DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("d/MM/yyyy");
                 String formattedDate = twoDaysLater.format(dateFormatter);
-
+        
                 // Store the time and date in userStates for later use
                 userStates.put(userId + "_input_time", parsedTime.toString());
                 userStates.put(userId + "_input_date", formattedDate);
-
+        
                 // Prompt the user to select a map
                 SelectMenu menu = createMapSelectMenu();
                 event.getChannel().sendMessage("Please select a map from the dropdown.")
@@ -125,10 +125,10 @@ public class CommandListener extends ListenerAdapter {
             event.getMessage().delete().queue(); // Delete the command message
         } else if (userStates.getOrDefault(userId, "").equals("awaiting_time_input")) {
             System.out.println("Received time input: " + message); // Logging the input
-
+        
             DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
             LocalTime parsedTime = null;
-
+        
             try {
                 parsedTime = LocalTime.parse(message, timeFormatter);
                 System.out.println("Successfully parsed time: " + parsedTime); // Logging successful parsing
@@ -137,15 +137,15 @@ public class CommandListener extends ListenerAdapter {
                 event.getChannel().sendMessage("Invalid time format. Please use HH:mm:ss format.").queue();
                 return; // Exit the method if parsing fails
             }
-
+        
             // If we reach here, it means parsing was successful
             LocalDate twoDaysLater = LocalDate.now(ZoneOffset.UTC).plusDays(2);
             DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("d/MM/yyyy");
             String formattedDate = twoDaysLater.format(dateFormatter);
-
+        
             // Append the date to the time
             String fullTime = parsedTime.toString() + " " + formattedDate;
-
+        
             bossManager.addTimer(userStates.get(userId + "_selected_map"), fullTime);
             event.getChannel()
                     .sendMessage("Timer added for " + userStates.get(userId + "_selected_map") + " at " + fullTime)
@@ -159,38 +159,17 @@ public class CommandListener extends ListenerAdapter {
                     });
             userStates.remove(userId);
             userStates.remove(userId + "_selected_map");
+        
             sendTimersToChannel();
+        
             event.getMessage().delete().queue(); // Delete user's command message
-
-        } else if (message.startsWith("!editTimer")) {
-            String[] parts = message.split(" ", 4); // Split into 4 parts
-            if (parts.length == 4) {
-                String mapName = parts[1] + " " + parts[2]; // Combine the two parts of the map name
-                String newTime = parts[3].split(" ")[0];
-                String newDate = parts[3].split(" ")[1];
-                bossManager.editTimer(mapName, newTime + " " + newDate);
-                event.getChannel().sendMessage("Timer for " + mapName + " updated to " + newTime + " on " + newDate)
-                        .queue(response -> {
-                            response.delete().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
-                                if (throwable instanceof ErrorResponseException) {
-                                    System.out.println("Error deleting message with ID: " + response.getId()
-                                            + ". Error: " + throwable.getMessage());
-                                }
-                            });
-                        });
-                sendTimersToChannel();
-            } else {
-                event.getChannel()
-                        .sendMessage(
-                                "Invalid command format. Use '!editTimer [mapNamePart1] [mapNamePart2] [HH:MM:SS] [d/MM/yyyy]'")
-                        .queue();
-            }
-            event.getMessage().delete().queue(); // Delete user's command message
+                
         } else if (message.startsWith("!deleteTimer")) {
             String[] parts = message.split(" ", 2);
             if (parts.length == 2) {
                 String mapName = parts[1];
                 bossManager.deleteTimer(mapName);
+                System.out.println("Deleted timer for " + mapName);
                 event.getChannel().sendMessage("Timer for " + mapName + " deleted.").queue(response -> {
                     response.delete().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
                         if (throwable instanceof ErrorResponseException) {
@@ -225,6 +204,7 @@ public class CommandListener extends ListenerAdapter {
                 String fullTime = userStates.get(userId + "_input_time") + " " + userStates.get(userId + "_input_date");
 
                 bossManager.addTimer(selectedMap, fullTime);
+
                 selectMenu.getChannel()
                         .sendMessage("Timer added for " + selectedMap + " at " + fullTime)
                         .queue(response -> {
@@ -287,6 +267,7 @@ public class CommandListener extends ListenerAdapter {
         }
 
         Map<String, String> allTimers = bossManager.getAllTimers();
+        System.out.println("Fetched timers from BossManager: " + allTimers);
         if (allTimers.isEmpty()) {
             System.out.println("No timers to send.");
             return; // No timers to send
