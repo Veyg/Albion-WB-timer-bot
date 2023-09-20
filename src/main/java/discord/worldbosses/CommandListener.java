@@ -91,6 +91,7 @@ public class CommandListener extends ListenerAdapter {
                 selectMenu.getMessage().delete().queue();
 
                 scheduleBossNotification(selectedMap, fullTime);
+                sendTimersToChannel();
             } else if (customId.equals("map-selector") && "awaiting_map_selection".equals(userStates.get(userId))) {
                 // This is for other functionalities that might require map selection without
                 // adding a timer
