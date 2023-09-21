@@ -27,3 +27,4 @@ replay_pid*
 *.dat
 timers.json
 .vscode/
+.DS_Store
