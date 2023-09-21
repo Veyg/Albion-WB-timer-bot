@@ -21,6 +21,9 @@ import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+
+import discord.worldbosses.BossManager.TimerData;
+
 import java.util.ArrayList;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -37,12 +40,29 @@ public class CommandListener extends ListenerAdapter {
     private JDA jda;
     private String designatedChannelId;
     private ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    
+    public CommandListener() {
+        scheduleLoadedTimers();
+        startPeriodicCheck();
+    }
+    
+    private void startPeriodicCheck() {
+        scheduler.scheduleAtFixedRate(() -> {
+            LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+            for (Map.Entry<String, TimerData> entry : bossManager.getAllTimers().entrySet()) {
+                LocalDateTime notificationTime = LocalDateTime.parse(entry.getValue().getNotificationTime(), DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"));
+                if (ChronoUnit.MINUTES.between(now, notificationTime) <= 5) {
+                    sendBossNotification(entry.getKey(), entry.getValue().getBossSpawnTime());
+                    bossManager.deleteTimer(entry.getKey());  // Remove the timer after sending the notification
+                }
+            }
+        }, 0, 5, TimeUnit.MINUTES);
+    }    
 
     @Override
     public void onMessageReceived(MessageReceivedEvent event) {
         if (event.getAuthor().isBot())
             return;
-
         this.jda = event.getJDA();
         String message = event.getMessage().getContentRaw();
 
@@ -275,8 +295,7 @@ public class CommandListener extends ListenerAdapter {
         if (designatedChannel == null)
             return;
 
-        Button killedButton = Button.primary("boss_killed", "Killed").withEmoji(Emoji.fromUnicode("🐘")); // Mammoth
-                                                                                                          // emoji
+        Button killedButton = Button.primary("boss_killed", "Killed").withEmoji(Emoji.fromUnicode("🐘"));
         Button skippedButton = Button.secondary("boss_skipped", "Skipped").withEmoji(Emoji.fromUnicode("🕣"));
         Button forgotButton = Button.danger("boss_forgot", "Forgot").withEmoji(Emoji.fromUnicode("❓"));
 
@@ -297,6 +316,14 @@ public class CommandListener extends ListenerAdapter {
             event.reply("Boss was forgotten!").queue();
         }
     }
+    private void scheduleLoadedTimers() {
+        for (Map.Entry<String, TimerData> entry : bossManager.getAllTimers().entrySet()) {
+            String mapName = entry.getKey();
+            String notificationTime = entry.getValue().getNotificationTime();
+            scheduleBossNotification(mapName, notificationTime);
+        }
+    }
+
 
     private void scheduleBossNotification(String mapName, String time) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy");
@@ -332,7 +359,7 @@ public class CommandListener extends ListenerAdapter {
             return; // Designated channel not found
         }
 
-        Map<String, String> allTimers = bossManager.getAllTimers();
+        Map<String, BossManager.TimerData> allTimers = bossManager.getAllTimers();
         if (allTimers.isEmpty()) {
             System.out.println("No timers to send.");
             return; // No timers to send
@@ -343,15 +370,15 @@ public class CommandListener extends ListenerAdapter {
         embed.setColor(0x00FFFF);
 
         // Sort the timers by date and time
-        List<Map.Entry<String, String>> sortedTimers = new ArrayList<>(allTimers.entrySet());
+        List<Map.Entry<String, TimerData>> sortedTimers = new ArrayList<>(allTimers.entrySet());
         sortedTimers.sort(Comparator.comparing(e -> {
-            String[] parts = e.getValue().split(" ");
+            String[] parts = e.getValue().getBossSpawnTime().split(" ");
             return LocalDate.parse(parts[1], DateTimeFormatter.ofPattern("d/MM/yyyy"))
                     .atTime(LocalTime.parse(parts[0], DateTimeFormatter.ofPattern("HH:mm:ss")));
         }));
 
         // Check if the first timer is within the next 12 hours
-        String[] nextTimerParts = sortedTimers.get(0).getValue().split(" ");
+        String[] nextTimerParts = sortedTimers.get(0).getValue().getBossSpawnTime().split(" ");
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
         System.out.println("Trying to parse the time: " + nextTimerParts[0] + " " + nextTimerParts[1]);
         LocalTime nextTimerLocalTime = LocalTime.parse(nextTimerParts[0], timeFormatter);
@@ -366,8 +393,8 @@ public class CommandListener extends ListenerAdapter {
             sortedTimers.remove(0); // Remove the first timer as it's already displayed
         }
 
-        for (Map.Entry<String, String> entry : sortedTimers) {
-            String[] timerParts = entry.getValue().split(" ");
+        for (Map.Entry<String, BossManager.TimerData> entry : sortedTimers) {
+            String[] timerParts = entry.getValue().getBossSpawnTime().split(" ");
             embed.addField(entry.getKey(), timerParts[0] + " UTC " + timerParts[1], false);
         }
 
