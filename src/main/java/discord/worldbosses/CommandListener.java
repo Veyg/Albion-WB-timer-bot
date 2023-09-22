@@ -443,7 +443,14 @@ public class CommandListener extends ListenerAdapter {
             event.getChannel()
                     .sendMessage(
                             "Invalid command format. Use '!editTimer [mapNamePart1] [mapNamePart2] [HH:MM:SS] [d/MM/yyyy]'")
-                    .queue();
+                    .queue(response -> {
+                        response.delete().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
+                            if (throwable instanceof ErrorResponseException) {
+                                System.out.println("Error deleting message with ID: " + response.getId()
+                                        + ". Error: " + throwable.getMessage());
+                            }
+                        });
+                    });
         }
         event.getMessage().delete().queue(); // Delete user's command message
     }   
