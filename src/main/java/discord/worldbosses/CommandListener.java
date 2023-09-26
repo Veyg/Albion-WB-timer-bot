@@ -159,13 +159,12 @@ public class CommandListener extends ListenerAdapter {
                     });
             return; // Exit the method early
         }
-
         String[] parts = message.split(" ", 2);
         if (parts.length == 2) {
             String timeInput = parts[1];
             DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
             LocalTime parsedTime = null;
-
+    
             try {
                 parsedTime = LocalTime.parse(timeInput, timeFormatter);
                 System.out.println("Successfully parsed time: " + parsedTime); // Logging successful parsing
@@ -174,16 +173,18 @@ public class CommandListener extends ListenerAdapter {
                 event.getChannel().sendMessage("Invalid time format. Please use HH:mm:ss format.").queue();
                 return; // Exit the method if parsing fails
             }
-
-            // If we reach here, it means parsing was successful
+    
+            // Ensure the time is always formatted as "HH:mm:ss"
+            String formattedTime = String.format("%02d:%02d:%02d", parsedTime.getHour(), parsedTime.getMinute(), parsedTime.getSecond());
+    
             LocalDate twoDaysLater = LocalDate.now(ZoneOffset.UTC).plusDays(2);
             DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("d/MM/yyyy");
             String formattedDate = twoDaysLater.format(dateFormatter);
-
+    
             // Store the time and date in userStates for later use
-            userStates.put(event.getAuthor().getId() + "_input_time", parsedTime.toString());
+            userStates.put(event.getAuthor().getId() + "_input_time", formattedTime);
             userStates.put(event.getAuthor().getId() + "_input_date", formattedDate);
-
+    
             // Prompt the user to select a map
             SelectMenu menu = createMapSelectMenu();
             event.getChannel().sendMessage("Please select a map from the dropdown.")
@@ -195,6 +196,7 @@ public class CommandListener extends ListenerAdapter {
         }
         event.getMessage().delete().queue(); // Delete the command message
     }
+    
 
     private void handleAwaitingTimeInput(MessageReceivedEvent event, String message) {
         String userId = event.getAuthor().getId();
