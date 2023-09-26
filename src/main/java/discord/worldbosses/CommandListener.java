@@ -307,17 +307,41 @@ public class CommandListener extends ListenerAdapter {
     }
 
     public void onButtonInteraction(ButtonInteraction event) {
-        if (event.getComponentId().equals("boss_killed")) {
-            // TODO: Handle boss killed
-            event.reply("Boss was killed!").queue();
-        } else if (event.getComponentId().equals("boss_skipped")) {
-            // TODO: Handle boss skipped
-            event.reply("Boss was skipped!").queue();
-        } else if (event.getComponentId().equals("boss_forgot")) {
-            // TODO: Handle boss forgot
-            event.reply("Boss was forgotten!").queue();
+        String componentId = event.getComponentId();
+        String[] parts = componentId.split("_", 3); // Split into 3 parts: action, status, mapName
+        String action = parts[0];
+        String mapName = parts[2];
+    
+        switch (action) {
+            case "boss":
+                handleBossAction(event, parts[1], mapName);
+                break;
+            // Handle other actions if needed
         }
     }
+    
+    private void handleBossAction(ButtonInteraction event, String status, String mapName) {
+        switch (status) {
+            case "killed":
+                // Ask for the time the boss was killed
+                event.getChannel().sendMessage("Please enter the time the boss was killed in HH:mm:ss format.").queue();
+                userStates.put(event.getUser().getId(), "awaiting_killed_time");
+                userStates.put(event.getUser().getId() + "_mapName", mapName);
+                event.reply("Enter the time the boss was killed.").queue();
+                break;
+            case "skipped":
+                bossManager.markBossAsSkipped(mapName);
+                event.reply("Boss was skipped!").queue();
+                sendTimersToChannel();
+                break;
+            case "forgot":
+                bossManager.markBossAsForgotten(mapName);
+                event.reply("Boss was forgotten!").queue();
+                sendTimersToChannel();
+                break;
+        }
+    }
+    
     private void scheduleLoadedTimers() {
         for (Map.Entry<String, TimerData> entry : bossManager.getAllTimers().entrySet()) {
             String mapName = entry.getKey();

@@ -6,7 +6,9 @@ import com.google.gson.reflect.TypeToken;
 import java.io.*;
 import java.lang.reflect.Type;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -82,11 +84,47 @@ public class BossManager {
                 e.printStackTrace();
             }
         }
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy");
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        mapTimers.entrySet().removeIf(entry -> {
+            TimerData data = entry.getValue();
+            if ("skipped".equals(data.getStatus()) || "forgotten".equals(data.getStatus())) {
+                LocalDateTime statusTime = LocalDateTime.parse(data.getStatusTime(), formatter);
+                return ChronoUnit.HOURS.between(statusTime, now) >= 48;
+            }
+            return false;
+        });
+    }
+    public void markBossAsKilled(String mapName, String killedTime){
+        TimerData data = mapTimers.get(mapName);
+        if (data != null) {
+            data.setStatus("Killed");
+            data.setStatusTime(killedTime);
+            saveTimers();
+        }
+    }
+    public void markBossAsSkipped(String mapName){
+        TimerData data = mapTimers.get(mapName);
+        if (data != null) {
+            data.setStatus("Skipped");
+            data.setStatusTime(LocalDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy")));
+            saveTimers();
+        }
+    }
+    public void markBossAsForgotten(String mapName) {
+        TimerData data = mapTimers.get(mapName);
+        if (data != null) {
+            data.setStatus("forgotten");
+            data.setStatusTime(LocalDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy")));
+            saveTimers();
+        }
     }
 
     public static class TimerData {
         private String bossSpawnTime;
         private String notificationTime;
+        private String status;
+        private String statusTime;
 
         public TimerData(String bossSpawnTime, String notificationTime) {
             this.bossSpawnTime = bossSpawnTime;
@@ -99,6 +137,18 @@ public class BossManager {
 
         public String getNotificationTime() {
             return notificationTime;
+        }
+        public String getStatus() {
+            return status;
+        }
+        public void setStatus(String status) {
+            this.status = status;
+        }
+        public String getStatusTime() {
+            return statusTime;
+        }
+        public void setStatusTime(String statusTime) {
+            this.statusTime = statusTime;
         }
     }
 }
