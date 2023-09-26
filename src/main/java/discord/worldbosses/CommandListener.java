@@ -346,9 +346,11 @@ public class CommandListener extends ListenerAdapter {
     }
         
     private void scheduleLoadedTimers() {
+        // TODO: Either tracking if notification was send to not double it, it can be only in cache - not expecting huge downtimes
         for (Map.Entry<String, TimerData> entry : bossManager.getAllTimers().entrySet()) {
             String mapName = entry.getKey();
             String notificationTime = entry.getValue().getNotificationTime();
+            System.out.println("Sending notification with Scheudled timers");
             scheduleBossNotification(mapName, notificationTime);
         }
     }
@@ -358,22 +360,46 @@ public class CommandListener extends ListenerAdapter {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy");
         LocalDateTime bossSpawnTime = LocalDateTime.parse(time, formatter);
         LocalDateTime notificationTime = bossSpawnTime.minusMinutes(20);
-        long delay = LocalDateTime.now(ZoneOffset.UTC).until(notificationTime, ChronoUnit.SECONDS);
-
+        LocalDateTime currentTime = LocalDateTime.now(ZoneOffset.UTC);
+        // long delay = LocalDateTime.now(ZoneOffset.UTC).until(notificationTime, ChronoUnit.SECONDS);
+    
         System.out.println("Boss spawn time: " + bossSpawnTime);
         System.out.println("Notification time: " + notificationTime);
         System.out.println("Scheduling boss notification for: " + time);
-        System.out.println("Current time: " + LocalDateTime.now(ZoneOffset.UTC));
-        System.out.println("Calculated delay in seconds: " + delay);
-        scheduler.schedule(() -> {
-            try {
-                sendBossNotification(mapName, time);
-            } catch (Exception e) {
-                System.out.println("Error sending boss notification: " + e.getMessage());
-                e.printStackTrace();
+        System.out.println("Current time: " + currentTime);
+    
+        if (currentTime.isBefore(notificationTime)){
+            long delay = currentTime.until(notificationTime, ChronoUnit.SECONDS);
+            System.out.println("Calculated delay in seconds: " + delay);
+            scheduler.schedule(() -> {
+                try {
+                    sendBossNotification(mapName, time);
+                }
+                catch (Exception e) {
+                    System.out.println("Error sending boss notification: " + e.getMessage());
+                    e.printStackTrace();
+                }
+
+            }, delay, TimeUnit.SECONDS);}
+        else if (currentTime.isBefore(bossSpawnTime)){
+            // Sending notification immediately
+            // TODO: In order to send the notification immediately, we need to store the designated channel somewhere
+            if (designatedChannelId != null){
+                try {
+                    sendBossNotification(mapName, time);
+                } catch (Exception e) {
+                    System.out.println("Error sending boss notification: " + e.getMessage());
+                    e.printStackTrace();
+                }
+
+                }
+            else {
+                System.out.println("Designated channel is null");
             }
-        }, delay, TimeUnit.SECONDS);
-    }
+            } else {
+                System.out.println("Boss spawn time has passed, not scheduling notification");
+            }
+        }    
 
     private void sendTimersToChannel() {
         System.out.println("Sending timers to channel");
