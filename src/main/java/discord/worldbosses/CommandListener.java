@@ -53,7 +53,7 @@ public class CommandListener extends ListenerAdapter {
                 LocalDateTime notificationTime = LocalDateTime.parse(entry.getValue().getNotificationTime(), DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"));
                 if (ChronoUnit.MINUTES.between(now, notificationTime) <= 5) {
                     sendBossNotification(entry.getKey(), entry.getValue().getBossSpawnTime());
-                    bossManager.deleteTimer(entry.getKey());  // Remove the timer after sending the notification
+                    // bossManager.deleteTimer(entry.getKey());  // Remove the timer after sending the notification
                 }
             }
         }, 0, 5, TimeUnit.MINUTES);
@@ -79,12 +79,19 @@ public class CommandListener extends ListenerAdapter {
         } else if (message.startsWith("!editTimer")) {
             handleEditTimer(event, message);
         }
+        else if (userStates.getOrDefault(event.getAuthor().getId(), "").equals("awaiting_killed_time")) {
+            handleAwaitingKilledTime(event, message);
+        }
+        
     }
 
     @Override
     public void onGenericInteractionCreate(GenericInteractionCreateEvent event) {
         this.jda = event.getJDA();
-        if (event.getInteraction() instanceof SelectMenuInteraction<?, ?>) {
+        if (event.getInteraction() instanceof ButtonInteraction) {
+            onButtonInteraction((ButtonInteraction) event.getInteraction());
+        }
+        else if (event.getInteraction() instanceof SelectMenuInteraction<?, ?>) {
             SelectMenuInteraction<?, ?> selectMenu = (SelectMenuInteraction<?, ?>) event.getInteraction();
             String userId = selectMenu.getUser().getId();
 
@@ -307,41 +314,37 @@ public class CommandListener extends ListenerAdapter {
     }
 
     public void onButtonInteraction(ButtonInteraction event) {
-        String componentId = event.getComponentId();
-        String[] parts = componentId.split("_", 3); // Split into 3 parts: action, status, mapName
-        String action = parts[0];
-        String mapName = parts[2];
-    
-        switch (action) {
-            case "boss":
-                handleBossAction(event, parts[1], mapName);
-                break;
-            // Handle other actions if needed
+        try {
+            String componentId = event.getComponentId();
+            switch (componentId) {
+                case "boss_killed":
+                    // Handle boss killed action
+                    handleBossKilled(event);
+                    break;
+                case "boss_skipped":
+                    // Extract map name from the message content
+                    String mapNameSkipped = extractMapNameFromMessage(event.getMessage().getContentRaw());
+                    bossManager.markBossAsSkipped(mapNameSkipped);
+                    event.reply("Boss was skipped!").queue();
+                    sendTimersToChannel();
+                    break;
+                case "boss_forgot":
+                    // Extract map name from the message content
+                    String mapNameForgot = extractMapNameFromMessage(event.getMessage().getContentRaw());
+                    bossManager.markBossAsForgotten(mapNameForgot);
+                    event.reply("Boss was forgotten!").queue();
+                    sendTimersToChannel();
+                    break;
+                default:
+                    event.reply("Unknown action.").queue();
+                    break;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            event.reply("An error occurred while processing the interaction.").setEphemeral(true).queue();
         }
     }
-    
-    private void handleBossAction(ButtonInteraction event, String status, String mapName) {
-        switch (status) {
-            case "killed":
-                // Ask for the time the boss was killed
-                event.getChannel().sendMessage("Please enter the time the boss was killed in HH:mm:ss format.").queue();
-                userStates.put(event.getUser().getId(), "awaiting_killed_time");
-                userStates.put(event.getUser().getId() + "_mapName", mapName);
-                event.reply("Enter the time the boss was killed.").queue();
-                break;
-            case "skipped":
-                bossManager.markBossAsSkipped(mapName);
-                event.reply("Boss was skipped!").queue();
-                sendTimersToChannel();
-                break;
-            case "forgot":
-                bossManager.markBossAsForgotten(mapName);
-                event.reply("Boss was forgotten!").queue();
-                sendTimersToChannel();
-                break;
-        }
-    }
-    
+        
     private void scheduleLoadedTimers() {
         for (Map.Entry<String, TimerData> entry : bossManager.getAllTimers().entrySet()) {
             String mapName = entry.getKey();
@@ -480,4 +483,32 @@ public class CommandListener extends ListenerAdapter {
         }
         event.getMessage().delete().queue(); // Delete user's command message
     }   
+    private String extractMapNameFromMessage(String messageContent) {
+        String[] lines = messageContent.split("\n");
+        for (String line : lines) {
+            if (line.startsWith("Map: ")) {
+                return line.split(": ")[1].trim();
+            }
+        }
+        return null;
+    }
+    private void handleBossKilled(ButtonInteraction event) {
+        // Extract map name from the message content
+        String mapName = extractMapNameFromMessage(event.getMessage().getContentRaw());
+        userStates.put(event.getUser().getId(), "awaiting_killed_time");
+        userStates.put(event.getUser().getId() + "_mapName", mapName);
+        event.reply("Enter the time the boss was killed in HH:mm:ss format.").setEphemeral(true).queue();
+    }
+    private void handleAwaitingKilledTime(MessageReceivedEvent event, String message) {
+        String userId = event.getAuthor().getId();
+        String mapName = userStates.get(userId + "_mapName");
+        bossManager.markBossAsKilled(mapName, message);
+        event.getChannel().sendMessage("Boss at " + mapName + " was killed at " + message).queue();
+        sendTimersToChannel();
+        userStates.remove(userId);
+        userStates.remove(userId + "_mapName");
+    }
+    
+    
+    
 }
