@@ -101,6 +101,7 @@ public class BossManager {
             data.setStatus("Killed");
             data.setStatusTime(killedTime);
             saveTimers();
+            updateTimerForKilledBoss(mapName); // Update the timer
         }
     }
     public void markBossAsSkipped(String mapName){
@@ -125,30 +126,57 @@ public class BossManager {
         private String notificationTime;
         private String status;
         private String statusTime;
-
+    
         public TimerData(String bossSpawnTime, String notificationTime) {
             this.bossSpawnTime = bossSpawnTime;
             this.notificationTime = notificationTime;
         }
-
+    
         public String getBossSpawnTime() {
             return bossSpawnTime;
         }
-
+    
+        public void setBossSpawnTime(String bossSpawnTime) {
+            this.bossSpawnTime = bossSpawnTime;
+        }
+    
         public String getNotificationTime() {
             return notificationTime;
         }
+    
+        public void setNotificationTime(String notificationTime) {
+            this.notificationTime = notificationTime;
+        }
+    
         public String getStatus() {
             return status;
         }
+    
         public void setStatus(String status) {
             this.status = status;
         }
+    
         public String getStatusTime() {
             return statusTime;
         }
+    
         public void setStatusTime(String statusTime) {
             this.statusTime = statusTime;
         }
     }
+    
+    public void updateTimerForKilledBoss(String mapName) {
+        TimerData timerData = mapTimers.get(mapName);
+        if (timerData != null) {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy");
+            LocalDateTime currentSpawnTime = LocalDateTime.parse(timerData.getBossSpawnTime(), formatter);
+            LocalDateTime newSpawnTime = currentSpawnTime.plusDays(2);
+            timerData.setBossSpawnTime(newSpawnTime.format(formatter));
+            timerData.setNotificationTime(calculateNotificationTime(newSpawnTime.format(formatter)));
+            // Reset the status
+            timerData.setStatus(null);
+            timerData.setStatusTime(null);
+            saveTimers();
+        }
+    }    
 }

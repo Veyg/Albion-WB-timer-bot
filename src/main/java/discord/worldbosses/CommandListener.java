@@ -44,7 +44,7 @@ public class CommandListener extends ListenerAdapter {
     private ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private Set<String> sentNotifications = new HashSet<>();
 
-    
+    // TODO: WE NEED TO STORE DESIGNATED CHANNEL NAME
     public CommandListener() {
         scheduleLoadedTimers();
         startPeriodicCheck();
@@ -542,17 +542,27 @@ public class CommandListener extends ListenerAdapter {
         userStates.put(event.getUser().getId(), "awaiting_killed_time");
         userStates.put(event.getUser().getId() + "_mapName", mapName);
         event.reply("Enter the time the boss was killed in HH:mm:ss format.").setEphemeral(true).queue();
+    
+        // Delete the original boss notification
+        event.getMessage().delete().queue();
     }
+    
     private void handleAwaitingKilledTime(MessageReceivedEvent event, String message) {
         String userId = event.getAuthor().getId();
         String mapName = userStates.get(userId + "_mapName");
         bossManager.markBossAsKilled(mapName, message);
-        event.getChannel().sendMessage("Boss at " + mapName + " was killed at " + message).queue();
+        event.getChannel().sendMessage("Boss at " + mapName + " was killed at " + message)
+            .queue(response -> {
+                // Schedule the deletion of the confirmation message 30 minutes later
+                response.delete().queueAfter(30, TimeUnit.MINUTES, null, throwable -> {
+                    if (throwable instanceof ErrorResponseException) {
+                        System.out.println("Error deleting message with ID: " + response.getId()
+                                + ". Error: " + throwable.getMessage());
+                    }
+                });
+            });
         sendTimersToChannel();
         userStates.remove(userId);
         userStates.remove(userId + "_mapName");
     }
-    
-    
-    
 }
