@@ -16,8 +16,10 @@ import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.interactions.components.buttons.ButtonInteraction;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -40,6 +42,8 @@ public class CommandListener extends ListenerAdapter {
     private JDA jda;
     private String designatedChannelId;
     private ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    private Set<String> sentNotifications = new HashSet<>();
+
     
     public CommandListener() {
         scheduleLoadedTimers();
@@ -303,15 +307,20 @@ public class CommandListener extends ListenerAdapter {
         TextChannel designatedChannel = jda.getTextChannelById(designatedChannelId);
         if (designatedChannel == null)
             return;
-
+    
         Button killedButton = Button.primary("boss_killed", "Killed").withEmoji(Emoji.fromUnicode("🐘"));
         Button skippedButton = Button.secondary("boss_skipped", "Skipped").withEmoji(Emoji.fromUnicode("🕣"));
         Button forgotButton = Button.danger("boss_forgot", "Forgot").withEmoji(Emoji.fromUnicode("❓"));
-
+    
         designatedChannel.sendMessage("@everyone\n**WORLD BOSS SPAWNING SOON**\nMap: " + mapName + "\nTime: " + time)
                 .setActionRow(killedButton, skippedButton, forgotButton)
                 .queue();
+    
+        // After sending the notification, add it to the set of sent notifications
+        String currentDate = LocalDate.now(ZoneOffset.UTC).toString();
+        sentNotifications.add(mapName + "_" + time + "_" + currentDate);
     }
+    
 
     public void onButtonInteraction(ButtonInteraction event) {
         try {
@@ -346,15 +355,24 @@ public class CommandListener extends ListenerAdapter {
     }
         
     private void scheduleLoadedTimers() {
-        // TODO: Either tracking if notification was send to not double it, it can be only in cache - not expecting huge downtimes
         for (Map.Entry<String, TimerData> entry : bossManager.getAllTimers().entrySet()) {
             String mapName = entry.getKey();
             String notificationTime = entry.getValue().getNotificationTime();
-            System.out.println("Sending notification with Scheudled timers");
+            
+            // Include the current date in the uniqueNotificationId
+            String currentDate = LocalDate.now(ZoneOffset.UTC).toString();
+            String uniqueNotificationId = mapName + "_" + notificationTime + "_" + currentDate;
+            
+            if (sentNotifications.contains(uniqueNotificationId)) {
+                System.out.println("Notification for " + mapName + " at " + notificationTime + " has already been sent today. Skipping.");
+                continue;
+            }
+    
+            System.out.println("Sending notification with Scheduled timers");
             scheduleBossNotification(mapName, notificationTime);
         }
     }
-
+    
 
     private void scheduleBossNotification(String mapName, String time) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy");
