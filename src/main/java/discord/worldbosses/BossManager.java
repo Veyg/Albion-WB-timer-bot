@@ -63,6 +63,7 @@ public class BossManager {
     }
 
     private void saveTimers() {
+        System.out.println("Saving timers to JSON file...");
         try (Writer writer = new FileWriter(FILE_NAME)) {
             gson.toJson(mapTimers, writer);
         } catch (IOException e) {
@@ -97,6 +98,7 @@ public class BossManager {
     }
     public void markBossAsKilled(String mapName, String killedTime){
         TimerData data = mapTimers.get(mapName);
+        System.out.println("Marking boss as killed for: " + mapName + " at time: " + killedTime);
         if (data != null) {
             data.setStatus("Killed");
             data.setStatusTime(killedTime);
@@ -167,6 +169,7 @@ public class BossManager {
     
     public void updateTimerForKilledBoss(String mapName) {
         TimerData timerData = mapTimers.get(mapName);
+        System.out.println("Updating timer for killed boss: " + mapName);
         if (timerData != null) {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy");
             LocalDateTime currentSpawnTime = LocalDateTime.parse(timerData.getBossSpawnTime(), formatter);
