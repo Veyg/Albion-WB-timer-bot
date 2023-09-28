@@ -5,7 +5,9 @@ import com.google.gson.reflect.TypeToken;
 
 import java.io.*;
 import java.lang.reflect.Type;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
@@ -96,16 +98,29 @@ public class BossManager {
             return false;
         });
     }
-    public void markBossAsKilled(String mapName, String killedTime){
-        TimerData data = mapTimers.get(mapName);
-        System.out.println("Marking boss as killed for: " + mapName + " at time: " + killedTime);
-        if (data != null) {
-            data.setStatus("Killed");
-            data.setStatusTime(killedTime);
-            saveTimers();
-            updateTimerForKilledBoss(mapName); // Update the timer
-        }
+public void markBossAsKilled(String mapName, String killedTime){
+    TimerData data = mapTimers.get(mapName);
+    if (data != null) {
+        // Get the current date and add 2 days
+        LocalDate currentDatePlusTwoDays = LocalDate.now(ZoneOffset.UTC).plusDays(2);
+        
+        // Combine the provided killedTime with the new date
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+        LocalTime killedLocalTime = LocalTime.parse(killedTime, timeFormatter);
+        LocalDateTime newSpawnDateTime = LocalDateTime.of(currentDatePlusTwoDays, killedLocalTime);
+        
+        // Set the new spawn time and notification time
+        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy");
+        data.setBossSpawnTime(newSpawnDateTime.format(dateTimeFormatter));
+        data.setNotificationTime(calculateNotificationTime(newSpawnDateTime.format(dateTimeFormatter)));
+        
+        // Reset the status
+        data.setStatus(null);
+        data.setStatusTime(null);
+        saveTimers();
     }
+}
+
     public void markBossAsSkipped(String mapName){
         TimerData data = mapTimers.get(mapName);
         if (data != null) {
@@ -166,20 +181,4 @@ public class BossManager {
             this.statusTime = statusTime;
         }
     }
-    
-    public void updateTimerForKilledBoss(String mapName) {
-        TimerData timerData = mapTimers.get(mapName);
-        System.out.println("Updating timer for killed boss: " + mapName);
-        if (timerData != null) {
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy");
-            LocalDateTime currentSpawnTime = LocalDateTime.parse(timerData.getBossSpawnTime(), formatter);
-            LocalDateTime newSpawnTime = currentSpawnTime.plusDays(2);
-            timerData.setBossSpawnTime(newSpawnTime.format(formatter));
-            timerData.setNotificationTime(calculateNotificationTime(newSpawnTime.format(formatter)));
-            // Reset the status
-            timerData.setStatus(null);
-            timerData.setStatusTime(null);
-            saveTimers();
-        }
-    }    
 }
