@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 
 import discord.worldbosses.BossManager.TimerData;
 
-import java.util.ArrayList;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -430,72 +430,76 @@ public class CommandListener extends ListenerAdapter {
             System.out.println("Designated channel ID is null.");
             return; // No designated channel set
         }
-
+    
         TextChannel designatedChannel = jda.getTextChannelById(designatedChannelId);
         if (designatedChannel == null) {
             System.out.println("Designated channel not found.");
             return; // Designated channel not found
         }
-
+    
         Map<String, TimerData> allTimers = bossManager.getAllTimers();
         if (allTimers.isEmpty()) {
             System.out.println("No timers to send.");
             return; // No timers to send
         }
-
+    
         EmbedBuilder embed = new EmbedBuilder();
         embed.setTitle("World Boss Timers");
         embed.setColor(0x00FFFF);
-
+    
         // Sort timers
         List<Map.Entry<String, TimerData>> sortedTimers = allTimers.entrySet().stream()
-                .sorted(Comparator.comparing(e -> LocalDateTime.parse(e.getValue().getBossSpawnTime(),
-                        DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"))))
+                .sorted(Comparator.comparing(e -> LocalDateTime.parse(e.getValue().getBossSpawnTime(), DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"))))
                 .collect(Collectors.toList());
-
+    
         // Add "Coming up" section
         Map.Entry<String, TimerData> nextTimer = sortedTimers.get(0);
-        LocalDateTime nextSpawnTime = LocalDateTime.parse(nextTimer.getValue().getBossSpawnTime(),
-                DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"));
-        if (Duration.between(LocalDateTime.now(ZoneOffset.UTC), nextSpawnTime).toHours() <= 12
-                && !bossManager.isSkippedOrForgotten(nextTimer.getKey())) {
-            embed.addField("🚨 Coming up:", "**" + nextTimer.getKey() + " - " + nextSpawnTime.toLocalTime() + " UTC "
-                    + nextSpawnTime.toLocalDate() + "**", false);
+        LocalDateTime nextSpawnTime = LocalDateTime.parse(nextTimer.getValue().getBossSpawnTime(), DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"));
+        if (Duration.between(LocalDateTime.now(ZoneOffset.UTC), nextSpawnTime).toHours() <= 12 && !bossManager.isSkippedOrForgotten(nextTimer.getKey())) {
+            embed.addField("🚨 Coming up:", "**" + nextTimer.getKey() + " - " + nextSpawnTime.format(DateTimeFormatter.ofPattern("HH:mm:ss")) + " UTC " + nextSpawnTime.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + "**", false);
             sortedTimers.remove(0);
         }
-
+    
         // Add active timers
         for (Map.Entry<String, TimerData> entry : sortedTimers) {
             if (!bossManager.isSkippedOrForgotten(entry.getKey())) {
-                LocalDateTime spawnTime = LocalDateTime.parse(entry.getValue().getBossSpawnTime(),
-                        DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"));
-                embed.addField(entry.getKey(), spawnTime.toLocalTime() + " UTC " + spawnTime.toLocalDate(), false);
+                LocalDateTime spawnTime = LocalDateTime.parse(entry.getValue().getBossSpawnTime(), DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"));
+                embed.addField(entry.getKey(), spawnTime.format(DateTimeFormatter.ofPattern("HH:mm:ss")) + " UTC " + spawnTime.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")), false);
             }
         }
-
+    
         // Add "Skipped / Forgotten" section
-        String skippedAndForgotten = bossManager.getSkippedAndForgottenBosses().stream()
-                .map(boss -> boss + " - " + allTimers.get(boss).getStatusTime())
-                .collect(Collectors.joining("\n"));
-        if (!skippedAndForgotten.isEmpty()) {
-            embed.addField("🕣 Skipped / Forgotten:", skippedAndForgotten, false);
+        StringBuilder skippedAndForgottenBuilder = new StringBuilder();
+        for (String boss : bossManager.getSkippedAndForgottenBosses()) {
+            TimerData data = allTimers.get(boss);
+            if (data != null) {
+                LocalDateTime statusTime = LocalDateTime.parse(data.getStatusTime(), DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"));
+                skippedAndForgottenBuilder.append(boss)
+                    .append(" - ")
+                    .append(statusTime.format(DateTimeFormatter.ofPattern("HH:mm:ss")))
+                    .append(" UTC ")
+                    .append(statusTime.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")))
+                    .append("\n");
+            }
         }
-
+        if (skippedAndForgottenBuilder.length() > 0) {
+            embed.addField("🕣 Skipped / Forgotten:", skippedAndForgottenBuilder.toString(), false);
+        }
+        
+    
         // Send or edit the message
         if (timerMessageId == null) {
             designatedChannel.sendMessageEmbeds(embed.build()).queue(message -> timerMessageId = message.getId());
         } else {
             designatedChannel.editMessageEmbedsById(timerMessageId, embed.build()).queue(null, throwable -> {
-                if (throwable instanceof ErrorResponseException
-                        && ((ErrorResponseException) throwable).getErrorCode() == 10008) {
-                    designatedChannel.sendMessageEmbeds(embed.build())
-                            .queue(message -> timerMessageId = message.getId());
+                if (throwable instanceof ErrorResponseException && ((ErrorResponseException) throwable).getErrorCode() == 10008) {
+                    designatedChannel.sendMessageEmbeds(embed.build()).queue(message -> timerMessageId = message.getId());
                 } else {
                     System.out.println("Error editing message: " + throwable.getMessage());
                 }
             });
         }
-    }
+    }    
 
     private void handleEditTimer(MessageReceivedEvent event, String message) {
         String[] parts = message.split(" ", 4); // Split into 4 parts

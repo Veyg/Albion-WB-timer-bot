@@ -23,7 +23,7 @@ public class BossManager {
 
     public Set<String> getSkippedAndForgottenBosses() {
         return new HashSet<>(skippedAndForgottenBosses);
-    }    
+    }
 
     public BossManager() {
         loadTimers();
@@ -53,7 +53,8 @@ public class BossManager {
 
     public void editTimer(String mapName, String newTime) {
         String notificationTime = calculateNotificationTime(newTime);
-        System.out.println("Edited timer for " + mapName + " to " + newTime + " with notification at " + notificationTime);
+        System.out.println(
+                "Edited timer for " + mapName + " to " + newTime + " with notification at " + notificationTime);
         mapTimers.put(mapName, new TimerData(newTime, notificationTime));
         saveTimers();
     }
@@ -84,10 +85,19 @@ public class BossManager {
         File file = new File(FILE_NAME);
         if (file.exists()) {
             try (Reader reader = new FileReader(file)) {
-                Type type = new TypeToken<Map<String, TimerData>>() {}.getType();
+                Type type = new TypeToken<Map<String, TimerData>>() {
+                }.getType();
                 mapTimers = gson.fromJson(reader, type);
                 if (mapTimers == null) {
                     mapTimers = new HashMap<>();
+                } else {
+                    // Populate the skippedAndForgottenBosses set
+                    for (Map.Entry<String, TimerData> entry : mapTimers.entrySet()) {
+                        if ("Skipped".equals(entry.getValue().getStatus())
+                                || "Forgotten".equals(entry.getValue().getStatus())) {
+                            skippedAndForgottenBosses.add(entry.getKey());
+                        }
+                    }
                 }
                 System.out.println("Loaded timers: " + mapTimers);
             } catch (IOException e) {
@@ -95,22 +105,23 @@ public class BossManager {
             }
         }
     }
-    public void markBossAsKilled(String mapName, String killedTime){
+
+    public void markBossAsKilled(String mapName, String killedTime) {
         TimerData data = mapTimers.get(mapName);
         if (data != null) {
             // Get the current date and add 2 days
             LocalDate currentDatePlusTwoDays = LocalDate.now(ZoneOffset.UTC).plusDays(2);
-            
+
             // Combine the provided killedTime with the new date
             DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
             LocalTime killedLocalTime = LocalTime.parse(killedTime, timeFormatter);
             LocalDateTime newSpawnDateTime = LocalDateTime.of(currentDatePlusTwoDays, killedLocalTime);
-            
+
             // Set the new spawn time and notification time
             DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy");
             data.setBossSpawnTime(newSpawnDateTime.format(dateTimeFormatter));
             data.setNotificationTime(calculateNotificationTime(newSpawnDateTime.format(dateTimeFormatter)));
-            
+
             // Reset the status
             data.setStatus(null);
             data.setStatusTime(null);
@@ -118,24 +129,28 @@ public class BossManager {
         }
     }
 
-    public void markBossAsSkipped(String mapName){
+    public void markBossAsSkipped(String mapName) {
         TimerData data = mapTimers.get(mapName);
         if (data != null) {
             data.setStatus("Skipped");
-            data.setStatusTime(LocalDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy")));
+            data.setStatusTime(
+                    LocalDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy")));
             skippedAndForgottenBosses.add(mapName);
             saveTimers();
         }
     }
+
     public void markBossAsForgotten(String mapName) {
         TimerData data = mapTimers.get(mapName);
         if (data != null) {
             data.setStatus("forgotten");
             skippedAndForgottenBosses.add(mapName);
-            data.setStatusTime(LocalDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy")));
+            data.setStatusTime(
+                    LocalDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy")));
             saveTimers();
         }
     }
+
     public boolean isSkippedOrForgotten(String mapName) {
         TimerData data = getAllTimers().get(mapName);
         if (data != null) {
@@ -143,45 +158,46 @@ public class BossManager {
         }
         return false;
     }
+
     public static class TimerData {
         private String bossSpawnTime;
         private String notificationTime;
         private String status;
         private String statusTime;
-    
+
         public TimerData(String bossSpawnTime, String notificationTime) {
             this.bossSpawnTime = bossSpawnTime;
             this.notificationTime = notificationTime;
         }
-    
+
         public String getBossSpawnTime() {
             return bossSpawnTime;
         }
-    
+
         public void setBossSpawnTime(String bossSpawnTime) {
             this.bossSpawnTime = bossSpawnTime;
         }
-    
+
         public String getNotificationTime() {
             return notificationTime;
         }
-    
+
         public void setNotificationTime(String notificationTime) {
             this.notificationTime = notificationTime;
         }
-    
+
         public String getStatus() {
             return status;
         }
-    
+
         public void setStatus(String status) {
             this.status = status;
         }
-    
+
         public String getStatusTime() {
             return statusTime;
         }
-    
+
         public void setStatusTime(String statusTime) {
             this.statusTime = statusTime;
         }
