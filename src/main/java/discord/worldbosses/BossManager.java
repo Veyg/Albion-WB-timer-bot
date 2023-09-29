@@ -136,7 +136,13 @@ public class BossManager {
             saveTimers();
         }
     }
-
+    public boolean isSkippedOrForgotten(String mapName) {
+        TimerData data = getAllTimers().get(mapName);
+        if (data != null) {
+            return "Skipped".equals(data.getStatus()) || "Forgotten".equals(data.getStatus());
+        }
+        return false;
+    }
     public static class TimerData {
         private String bossSpawnTime;
         private String notificationTime;

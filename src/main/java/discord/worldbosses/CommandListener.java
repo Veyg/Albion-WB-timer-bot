@@ -206,6 +206,7 @@ public class CommandListener extends ListenerAdapter {
         } else {
             event.getChannel().sendMessage("Invalid command format. Use `!addtimer [HH:MM:SS]`").queue();
         }
+        // TODO: Self delete the command message
         event.getMessage().delete().queue(); // Delete the command message
     }
 
@@ -374,6 +375,9 @@ public class CommandListener extends ListenerAdapter {
     }
 
     private void scheduleBossNotification(String mapName, String time) {
+        if (bossManager.isSkippedOrForgotten(mapName)) {
+            return; // Don't schedule a notification for a boss that's marked as skipped or forgotten
+        }
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy");
         LocalDateTime bossSpawnTime = LocalDateTime.parse(time, formatter);
         LocalDateTime notificationTime = bossSpawnTime.minusMinutes(20);
@@ -424,64 +428,65 @@ public class CommandListener extends ListenerAdapter {
             System.out.println("Designated channel ID is null.");
             return; // No designated channel set
         }
-
+    
         TextChannel designatedChannel = jda.getTextChannelById(designatedChannelId);
         if (designatedChannel == null) {
             System.out.println("Designated channel not found.");
             return; // Designated channel not found
         }
-
-        Map<String, BossManager.TimerData> allTimers = bossManager.getAllTimers();
+    
+        Map<String, TimerData> allTimers = bossManager.getAllTimers();
         if (allTimers.isEmpty()) {
             System.out.println("No timers to send.");
             return; // No timers to send
         }
-
+    
         EmbedBuilder embed = new EmbedBuilder();
         embed.setTitle("World Boss Timers");
         embed.setColor(0x00FFFF);
-
-        // Sort the timers by date and time
+    
         List<Map.Entry<String, TimerData>> sortedTimers = new ArrayList<>(allTimers.entrySet());
         sortedTimers.sort(Comparator.comparing(e -> {
             String[] parts = e.getValue().getBossSpawnTime().split(" ");
             return LocalDate.parse(parts[1], DateTimeFormatter.ofPattern("d/MM/yyyy"))
                     .atTime(LocalTime.parse(parts[0], DateTimeFormatter.ofPattern("HH:mm:ss")));
         }));
-
-        // Check if the first timer is within the next 12 hours
-        String[] nextTimerParts = sortedTimers.get(0).getValue().getBossSpawnTime().split(" ");
-        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
-        System.out.println("Trying to parse the time: " + nextTimerParts[0] + " " + nextTimerParts[1]);
-        LocalTime nextTimerLocalTime = LocalTime.parse(nextTimerParts[0], timeFormatter);
-        LocalDate nextTimerLocalDate = LocalDate.parse(nextTimerParts[1], DateTimeFormatter.ofPattern("d/MM/yyyy"));
-        long hoursDifference = ChronoUnit.HOURS.between(LocalTime.now(ZoneOffset.UTC), nextTimerLocalTime);
-        LocalDate utcDate = LocalDate.now(ZoneOffset.UTC);
-        long daysDifference = ChronoUnit.DAYS.between(utcDate, nextTimerLocalDate);
-
-        if (daysDifference == 0 && hoursDifference <= 12) {
-            embed.addField("🚨 Coming up:", "**" + sortedTimers.get(0).getKey() + " - " + nextTimerParts[0] + " UTC "
-                    + nextTimerParts[1] + "**", false);
-            sortedTimers.remove(0); // Remove the first timer as it's already displayed
+    
+        if (!bossManager.isSkippedOrForgotten(sortedTimers.get(0).getKey())) {
+            String[] nextTimerParts = sortedTimers.get(0).getValue().getBossSpawnTime().split(" ");
+            DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+            LocalTime nextTimerLocalTime = LocalTime.parse(nextTimerParts[0], timeFormatter);
+            LocalDate nextTimerLocalDate = LocalDate.parse(nextTimerParts[1], DateTimeFormatter.ofPattern("d/MM/yyyy"));
+            long hoursDifference = ChronoUnit.HOURS.between(LocalTime.now(ZoneOffset.UTC), nextTimerLocalTime);
+            LocalDate utcDate = LocalDate.now(ZoneOffset.UTC);
+            long daysDifference = ChronoUnit.DAYS.between(utcDate, nextTimerLocalDate);
+    
+            if (daysDifference == 0 && hoursDifference <= 12) {
+                embed.addField("🚨 Coming up:", "**" + sortedTimers.get(0).getKey() + " - " + nextTimerParts[0] + " UTC "
+                        + nextTimerParts[1] + "**", false);
+                sortedTimers.remove(0); // Remove the first timer as it's already displayed
+            }
+        } else {
+            // If the boss is skipped or forgotten, just remove it from the sortedTimers list
+            // so it doesn't get displayed in the main section
+            sortedTimers.remove(0);
         }
-
-        for (Map.Entry<String, BossManager.TimerData> entry : sortedTimers) {
+    
+        for (Map.Entry<String, TimerData> entry : sortedTimers) {
             String[] timerParts = entry.getValue().getBossSpawnTime().split(" ");
             embed.addField(entry.getKey(), timerParts[0] + " UTC " + timerParts[1], false);
         }
-
-        // Add Skipped and Forgotten bosses
+    
         StringBuilder skippedAndForgottenBuilder = new StringBuilder();
-        for (String boss : bossManager.getSkippedAndForgottenBosses()) {
-            TimerData data = allTimers.get(boss);
-            if (data != null) {
-                skippedAndForgottenBuilder.append(boss).append(" - ").append(data.getStatusTime()).append("\n");
+        for (Map.Entry<String, TimerData> entry : allTimers.entrySet()) {
+            if ("Skipped".equals(entry.getValue().getStatus()) || "Forgotten".equals(entry.getValue().getStatus())) {
+                skippedAndForgottenBuilder.append(entry.getKey()).append(" - ").append(entry.getValue().getStatusTime()).append("\n");
             }
         }
         if (skippedAndForgottenBuilder.length() > 0) {
             embed.addField("🕣 Skipped / Forgotten:", skippedAndForgottenBuilder.toString(), false);
         }
-
+    
         if (timerMessageId == null) {
             // If the timer message hasn't been sent yet, send it
             designatedChannel.sendMessageEmbeds(embed.build()).queue(message -> {
@@ -506,6 +511,7 @@ public class CommandListener extends ListenerAdapter {
             });
         }
     }
+    
 
     private void handleEditTimer(MessageReceivedEvent event, String message) {
         String[] parts = message.split(" ", 4); // Split into 4 parts
