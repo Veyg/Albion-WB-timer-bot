@@ -3,7 +3,6 @@ package discord.worldbosses;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent;
@@ -15,6 +14,8 @@ import net.dv8tion.jda.api.interactions.components.selections.SelectMenuInteract
 import net.dv8tion.jda.api.interactions.components.selections.StringSelectMenu;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.interactions.components.buttons.ButtonInteraction;
+
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -59,13 +60,15 @@ public class CommandListener extends ListenerAdapter {
                 LocalDateTime notificationTime = LocalDateTime.parse(entry.getValue().getNotificationTime(),
                         DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"));
                 if (ChronoUnit.MINUTES.between(now, notificationTime) <= 5) {
-                    sendBossNotification(entry.getKey(), entry.getValue().getBossSpawnTime());
-                    // bossManager.deleteTimer(entry.getKey()); // Remove the timer after sending
-                    // the notification
+                    // Check if the boss has been marked as skipped or forgotten
+                    if (!bossManager.isSkippedOrForgotten(entry.getKey())) {
+                        sendBossNotification(entry.getKey(), entry.getValue().getBossSpawnTime());
+                    }
                 }
             }
         }, 0, 5, TimeUnit.MINUTES);
     }
+    
 
     @Override
     public void onMessageReceived(MessageReceivedEvent event) {
@@ -429,86 +432,103 @@ public class CommandListener extends ListenerAdapter {
             System.out.println("Designated channel ID is null.");
             return; // No designated channel set
         }
-
+    
         TextChannel designatedChannel = jda.getTextChannelById(designatedChannelId);
         if (designatedChannel == null) {
             System.out.println("Designated channel not found.");
             return; // Designated channel not found
         }
-
+    
         Map<String, TimerData> allTimers = bossManager.getAllTimers();
         if (allTimers.isEmpty()) {
             System.out.println("No timers to send.");
             return; // No timers to send
         }
-
+    
         EmbedBuilder embed = new EmbedBuilder();
         embed.setTitle("World Boss Timers");
         embed.setColor(0x00FFFF);
-
-        // Sort timers
-        List<Map.Entry<String, TimerData>> sortedTimers = allTimers.entrySet().stream()
-                .sorted(Comparator.comparing(e -> LocalDateTime.parse(e.getValue().getBossSpawnTime(),
-                        DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"))))
-                .collect(Collectors.toList());
-
-        // Add "Coming up" section
-        Map.Entry<String, TimerData> nextTimer = sortedTimers.get(0);
-        LocalDateTime nextSpawnTime = LocalDateTime.parse(nextTimer.getValue().getBossSpawnTime(),
-                DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"));
-        if (Duration.between(LocalDateTime.now(ZoneOffset.UTC), nextSpawnTime).toHours() <= 12
-                && !bossManager.isSkippedOrForgotten(nextTimer.getKey())) {
-            embed.addField("🚨 Coming up:",
-                    "**" + nextTimer.getKey() + " - " + nextSpawnTime.format(DateTimeFormatter.ofPattern("HH:mm:ss"))
-                            + " UTC " + nextSpawnTime.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + "**",
-                    false);
-            sortedTimers.remove(0);
-        }
-
-        // Add active timers
-        for (Map.Entry<String, TimerData> entry : sortedTimers) {
-            if (!bossManager.isSkippedOrForgotten(entry.getKey())) {
-                LocalDateTime spawnTime = LocalDateTime.parse(entry.getValue().getBossSpawnTime(),
+    
+        // Create lists for upcoming, skipped/forgotten, and all timers
+        List<Map.Entry<String, TimerData>> upcomingTimers = new ArrayList<>();
+        List<Map.Entry<String, TimerData>> skippedForgottenTimers = new ArrayList<>();
+    
+        for (Map.Entry<String, TimerData> entry : allTimers.entrySet()) {
+            String bossName = entry.getKey();
+            TimerData timerData = entry.getValue();
+    
+            if ("Skipped".equals(timerData.getStatus()) || "Forgotten".equals(timerData.getStatus())) {
+                // Add to skipped/forgotten section
+                skippedForgottenTimers.add(entry);
+            } else {
+                LocalDateTime bossSpawnTime = LocalDateTime.parse(timerData.getBossSpawnTime(),
                         DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"));
-                embed.addField(entry.getKey(), spawnTime.format(DateTimeFormatter.ofPattern("HH:mm:ss")) + " UTC "
-                        + spawnTime.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")), false);
+    
+                // Calculate the time difference in hours
+                long hoursUntilSpawn = Duration.between(LocalDateTime.now(ZoneOffset.UTC), bossSpawnTime).toHours();
+    
+                if (hoursUntilSpawn <= 12) {
+                    // Add to upcoming section if within 12 hours
+                    upcomingTimers.add(entry);
+                } else {
+                    // Add to main timers section
+                    embed.addField(bossName,
+                            bossSpawnTime.format(DateTimeFormatter.ofPattern("HH:mm:ss")) + " UTC "
+                                    + bossSpawnTime.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")), false);
+                }
             }
         }
-
-        // Add "Skipped / Forgotten" section
-        StringBuilder skippedAndForgottenBuilder = new StringBuilder();
-        for (String boss : bossManager.getSkippedAndForgottenBosses()) {
-            TimerData data = allTimers.get(boss);
-            if (data != null) {
-                LocalDateTime statusTime = LocalDateTime.parse(data.getStatusTime(),
+    
+        // Sort upcoming timers by spawn time
+        upcomingTimers.sort(Comparator.comparing(e -> LocalDateTime.parse(e.getValue().getBossSpawnTime(),
+                DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"))));
+    
+        // Add "Coming up" section
+        if (!upcomingTimers.isEmpty()) {
+            StringBuilder comingUpBuilder = new StringBuilder();
+            for (Map.Entry<String, TimerData> nextTimer : upcomingTimers) {
+                LocalDateTime nextSpawnTime = LocalDateTime.parse(nextTimer.getValue().getBossSpawnTime(),
                         DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"));
-                skippedAndForgottenBuilder.append(boss)
+                comingUpBuilder.append("**")
+                        .append(nextTimer.getKey())
                         .append(" - ")
-                        .append(statusTime.format(DateTimeFormatter.ofPattern("HH:mm:ss")))
+                        .append(nextSpawnTime.format(DateTimeFormatter.ofPattern("HH:mm:ss")))
                         .append(" UTC ")
-                        .append(statusTime.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")))
+                        .append(nextSpawnTime.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")))
+                        .append("**\n");
+            }
+            // Insert the "Coming up" section at the beginning of the embed
+            embed.addField("🚨 Coming up:", comingUpBuilder.toString(), false);
+        }
+    
+        // Add "Skipped / Forgotten" section
+        if (!skippedForgottenTimers.isEmpty()) {
+            StringBuilder skippedForgottenBuilder = new StringBuilder();
+            for (Map.Entry<String, TimerData> entry : skippedForgottenTimers) {
+                String bossName = entry.getKey();
+                TimerData timerData = entry.getValue();
+                skippedForgottenBuilder.append(bossName)
+                        .append(" - ")
+                        .append(timerData.getBossSpawnTime())
                         .append("\n");
             }
+            embed.addField("🕣 Skipped / Forgotten:", skippedForgottenBuilder.toString(), false);
         }
-        if (skippedAndForgottenBuilder.length() > 0) {
-            embed.addField("🕣 Skipped / Forgotten:", skippedAndForgottenBuilder.toString(), false);
-        }
-
+    
         // Send or edit the message
         if (timerMessageId == null) {
             designatedChannel.sendMessageEmbeds(embed.build()).queue(message -> timerMessageId = message.getId());
         } else {
             designatedChannel.editMessageEmbedsById(timerMessageId, embed.build()).queue(null, throwable -> {
-                if (throwable instanceof ErrorResponseException
-                        && ((ErrorResponseException) throwable).getErrorCode() == 10008) {
-                    designatedChannel.sendMessageEmbeds(embed.build())
-                            .queue(message -> timerMessageId = message.getId());
+                if (throwable instanceof ErrorResponseException && ((ErrorResponseException) throwable).getErrorCode() == 10008) {
+                    designatedChannel.sendMessageEmbeds(embed.build()).queue(message -> timerMessageId = message.getId());
                 } else {
                     System.out.println("Error editing message: " + throwable.getMessage());
                 }
             });
         }
     }
+    
 
     private void handleEditTimer(MessageReceivedEvent event, String message) {
         String[] parts = message.split(" ", 4); // Split into 4 parts
