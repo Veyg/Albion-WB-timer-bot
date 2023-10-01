@@ -20,6 +20,8 @@ public class BossManager {
     private Map<String, TimerData> mapTimers = new HashMap<>();
     private final Gson gson = new Gson();
     private Set<String> skippedAndForgottenBosses = new HashSet<>();
+    private static final int NOTIFICATION_OFFSET_MINUTES = 20;
+    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy");
 
     public Set<String> getSkippedAndForgottenBosses() {
         return new HashSet<>(skippedAndForgottenBosses);
@@ -66,10 +68,10 @@ public class BossManager {
     }
 
     private String calculateNotificationTime(String bossSpawnTime) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy");
-        LocalDateTime bossTime = LocalDateTime.parse(bossSpawnTime, formatter);
-        LocalDateTime notificationTime = bossTime.minusMinutes(20);
-        return notificationTime.format(formatter);
+        
+        LocalDateTime bossTime = LocalDateTime.parse(bossSpawnTime, DATE_TIME_FORMATTER);
+        LocalDateTime notificationTime = bossTime.minusMinutes(NOTIFICATION_OFFSET_MINUTES);
+        return notificationTime.format(DATE_TIME_FORMATTER);
     }
 
     private void saveTimers() {
