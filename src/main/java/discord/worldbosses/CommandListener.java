@@ -3,18 +3,16 @@ package discord.worldbosses;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-import net.dv8tion.jda.api.interactions.components.selections.SelectMenu;
 import net.dv8tion.jda.api.interactions.components.selections.SelectMenuInteraction;
-import net.dv8tion.jda.api.interactions.components.selections.StringSelectMenu;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.interactions.components.buttons.ButtonInteraction;
+import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -70,38 +68,62 @@ public class CommandListener extends ListenerAdapter {
             }
         }, 0, 5, TimeUnit.MINUTES);
     }
-    
-
     @Override
-    public void onMessageReceived(MessageReceivedEvent event) {
-        if (event.getAuthor().isBot())
-            return;
-        this.jda = event.getJDA();
-        String message = event.getMessage().getContentRaw();
-    
-        if (message.startsWith("!setDesignatedChannel")) {
-            // Check if the user has the ADMINISTRATOR permission
-            Member member = event.getMember();
-            if (member != null && member.hasPermission(Permission.ADMINISTRATOR)) {
+    public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
+        switch (event.getName()) {
+            case "setdesignatedchannel":
                 handleSetDesignatedChannel(event);
-            } else {
-                event.getChannel().sendMessage("You don't have permission to use this command!").queue();
-            }
-        } else if (message.startsWith("!addtimer")) {
-            handleAddTimer(event, message);
-        } else if (userStates.getOrDefault(event.getAuthor().getId(), "").equals("awaiting_time_input")) {
-            handleAwaitingTimeInput(event, message);
-        } else if (message.startsWith("!deleteTimer")) {
-            handleDeleteTimer(event, message);
-        } else if (message.startsWith("!testNotification")) {
-            handleTestNotification(event);
-        } else if (message.startsWith("!editTimer")) {
-            handleEditTimer(event, message);
-        } else if (userStates.getOrDefault(event.getAuthor().getId(), "").equals("awaiting_killed_time")) {
-            handleAwaitingKilledTime(event, message);
+                break;
+            case "addtimer":
+                handleAddTimer(event);
+                break;
+            case "deletetimer":
+                handleDeleteTimer(event);
+                break;
+            case "edittimer":
+                handleEditTimer(event);
+                break;
+            default:
+                event.reply("Unknown command.").setEphemeral(true).queue();
         }
     }
     
+
+    private void handleEditTimer(SlashCommandInteractionEvent event) {
+    }
+
+    private void handleDeleteTimer(SlashCommandInteractionEvent event) {
+    }
+
+    private void handleAddTimer(SlashCommandInteractionEvent event) {
+        String timeInput = event.getOption("time").getAsString();
+        String mapName = event.getOption("map").getAsString();
+    
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+        LocalTime parsedTime;
+        try {
+            parsedTime = LocalTime.parse(timeInput, timeFormatter);
+        } catch (DateTimeParseException e) {
+            event.reply("Invalid time format. Please use HH:mm:ss format.").setEphemeral(true).queue();
+            return;
+        }
+    
+        // Ensure the time is always formatted as "HH:mm:ss"
+        String formattedTime = String.format("%02d:%02d:%02d", parsedTime.getHour(), parsedTime.getMinute(), parsedTime.getSecond());
+    
+        LocalDate twoDaysLater = LocalDate.now(ZoneOffset.UTC).plusDays(2);
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("d/MM/yyyy");
+        String formattedDate = twoDaysLater.format(dateFormatter);
+    
+        String fullTime = formattedDate + " " + formattedTime;
+    
+        // Store the timer using BossManager
+        bossManager.addTimer(mapName, fullTime);
+        bossManager.saveTimers(); // This line needs the saveTimers method to be public in BossManager
+    
+        // Provide feedback to the user
+        event.reply("Timer added for " + mapName + " at " + fullTime).queue();
+    }  
 
     @Override
     public void onGenericInteractionCreate(GenericInteractionCreateEvent event) {
@@ -143,89 +165,34 @@ public class CommandListener extends ListenerAdapter {
         }
     }
 
-    private void handleSetDesignatedChannel(MessageReceivedEvent event) {
+    private void handleSetDesignatedChannel(SlashCommandInteractionEvent event) {
         if (event.getMember().hasPermission(Permission.ADMINISTRATOR)) {
-            designatedChannelId = event.getChannel().getId();
+            designatedChannelId = ((TextChannel) event.getChannel()).getId();
     
             // Save the designated channel ID to the config file
             ConfigManager.setDesignatedChannelId(designatedChannelId);
     
-            event.getChannel().sendMessage("This channel is now set as the designated channel for timers.")
+            event.reply("This channel is now set as the designated channel for timers.")
                     .queue(response -> {
-                        response.delete().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
+                        response.deleteOriginal().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
                             if (throwable instanceof ErrorResponseException) {
-                                System.out.println("Error deleting message with ID: " + response.getId()
+                                System.out.println("Error deleting message with ID: " + event.getInteraction().getId()
                                         + ". Error: " + throwable.getMessage());
                             }
                         });
                     });
         } else {
-            event.getChannel().sendMessage("You need administrator permissions to set the designated channel.")
+            event.reply("You need administrator permissions to set the designated channel.")
                     .queue(response -> {
-                        response.delete().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
+                        response.deleteOriginal().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
                             if (throwable instanceof ErrorResponseException) {
-                                System.out.println("Error deleting message with ID: " + response.getId()
+                                System.out.println("Error deleting message with ID: " + event.getInteraction().getId()
                                         + ". Error: " + throwable.getMessage());
                             }
                         });
                     });
         }
-        event.getMessage().delete().queue(); // Delete user's command message
         sendTimersToChannel();
-    }
-    
-
-    private void handleAddTimer(MessageReceivedEvent event, String message) {
-        if (!event.getChannel().getId().equals(designatedChannelId)) {
-            event.getChannel().sendMessage("This command can only be used in the designated channel.")
-                    .queue(response -> {
-                        response.delete().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
-                            if (throwable instanceof ErrorResponseException) {
-                                System.out.println("Error deleting message with ID: " + response.getId()
-                                        + ". Error: " + throwable.getMessage());
-                            }
-                        });
-                    });
-            return; // Exit the method early
-        }
-        String[] parts = message.split(" ", 2);
-        if (parts.length == 2) {
-            String timeInput = parts[1];
-            DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
-            LocalTime parsedTime = null;
-
-            try {
-                parsedTime = LocalTime.parse(timeInput, timeFormatter);
-                System.out.println("Successfully parsed time: " + parsedTime); // Logging successful parsing
-            } catch (DateTimeParseException e) {
-                System.out.println("Error parsing time: " + e.getMessage()); // Logging the error
-                event.getChannel().sendMessage("Invalid time format. Please use HH:mm:ss format.").queue();
-                return; // Exit the method if parsing fails
-            }
-
-            // Ensure the time is always formatted as "HH:mm:ss"
-            String formattedTime = String.format("%02d:%02d:%02d", parsedTime.getHour(), parsedTime.getMinute(),
-                    parsedTime.getSecond());
-
-            LocalDate twoDaysLater = LocalDate.now(ZoneOffset.UTC).plusDays(2);
-            DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("d/MM/yyyy");
-            String formattedDate = twoDaysLater.format(dateFormatter);
-
-            // Store the time and date in userStates for later use
-            userStates.put(event.getAuthor().getId() + "_input_time", formattedTime);
-            userStates.put(event.getAuthor().getId() + "_input_date", formattedDate);
-
-            // Prompt the user to select a map
-            SelectMenu menu = createMapSelectMenu();
-            event.getChannel().sendMessage("Please select a map from the dropdown.")
-                    .setActionRow(menu)
-                    .queue();
-            userStates.put(event.getAuthor().getId(), "awaiting_map_selection_for_add");
-        } else {
-            event.getChannel().sendMessage("Invalid command format. Use `!addtimer [HH:MM:SS]`").queue();
-        }
-        // TODO: Self delete the command message
-        event.getMessage().delete().queue(); // Delete the command message
     }
 
     private void handleAwaitingTimeInput(MessageReceivedEvent event, String message) {
@@ -268,7 +235,6 @@ public class CommandListener extends ListenerAdapter {
 
         sendTimersToChannel();
 
-        event.getMessage().delete().queue(); // Delete user's command message
     }
 
     private void handleDeleteTimer(MessageReceivedEvent event, String message) {
@@ -293,31 +259,6 @@ public class CommandListener extends ListenerAdapter {
     private void handleTestNotification(MessageReceivedEvent event) {
         sendBossNotification("TestMap", "20:00:00 1/01/2023");
         event.getMessage().delete().queue(); // Delete user's command message
-    }
-
-    private SelectMenu createMapSelectMenu() {
-        return StringSelectMenu.create("map-selector")
-                .addOption("Deathwisp Sink", "Deathwisp Sink")
-                .addOption("Drownfield Wetland", "Drownfield Wetland")
-                .addOption("Dryvein Steppe", "Dryvein Steppe")
-                .addOption("Farshore Heath", "Farshore Heath")
-                .addOption("Hightree Levee", "Hightree Levee")
-                .addOption("Longfen Arms", "Longfen Arms")
-                .addOption("Longfen Veins", "Longfen Veins")
-                .addOption("Longtimber Glen", "Longtimber Glen")
-                .addOption("Rivercopse Fount", "Rivercopse Fount")
-                .addOption("Runnelvein Bog", "Runnelvein Bog")
-                .addOption("Skysand Ridge", "Skysand Ridge")
-                .addOption("Sunfang Cliffs", "Sunfang Cliffs")
-                .addOption("Sunfang Dawn", "Sunfang Dawn")
-                .addOption("Sunstrand Dunes", "Sunstrand Dunes")
-                .addOption("Timberslope Grove", "Timberslope Grove")
-                .addOption("Timbertop Dale", "Timbertop Dale")
-                .addOption("Watchwood Bluffs", "Watchwood Bluffs")
-                .addOption("Westweald Shore", "Westweald Shore")
-                .setPlaceholder("Choose a map...")
-                .setRequiredRange(1, 1)
-                .build();
     }
 
     private void sendBossNotification(String mapName, String time) {
@@ -607,24 +548,5 @@ public class CommandListener extends ListenerAdapter {
 
         // Delete the original boss notification
         event.getMessage().delete().queue();
-    }
-
-    private void handleAwaitingKilledTime(MessageReceivedEvent event, String message) {
-        String userId = event.getAuthor().getId();
-        String mapName = userStates.get(userId + "_mapName");
-        bossManager.markBossAsKilled(mapName, message);
-        event.getChannel().sendMessage("Boss at " + mapName + " was killed at " + message)
-                .queue(response -> {
-                    // Schedule the deletion of the confirmation message 30 minutes later
-                    response.delete().queueAfter(30, TimeUnit.MINUTES, null, throwable -> {
-                        if (throwable instanceof ErrorResponseException) {
-                            System.out.println("Error deleting message with ID: " + response.getId()
-                                    + ". Error: " + throwable.getMessage());
-                        }
-                    });
-                });
-        sendTimersToChannel();
-        userStates.remove(userId);
-        userStates.remove(userId + "_mapName");
     }
 }

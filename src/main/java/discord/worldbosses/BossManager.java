@@ -74,7 +74,7 @@ public class BossManager {
         return notificationTime.format(DATE_TIME_FORMATTER);
     }
 
-    private void saveTimers() {
+    public void saveTimers() {
         System.out.println("Saving timers to JSON file...");
         try (Writer writer = new FileWriter(FILE_NAME)) {
             gson.toJson(mapTimers, writer);
