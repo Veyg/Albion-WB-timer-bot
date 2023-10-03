@@ -464,7 +464,6 @@ public class CommandListener extends ListenerAdapter {
         List<Map.Entry<String, TimerData>> skippedForgottenTimers = new ArrayList<>();
     
         for (Map.Entry<String, TimerData> entry : allTimers.entrySet()) {
-            String bossName = entry.getKey();
             TimerData timerData = entry.getValue();
     
             if ("Skipped".equals(timerData.getStatus()) || "Forgotten".equals(timerData.getStatus())) {
@@ -480,11 +479,6 @@ public class CommandListener extends ListenerAdapter {
                 if (hoursUntilSpawn <= 12) {
                     // Add to upcoming section if within 12 hours
                     upcomingTimers.add(entry);
-                } else {
-                    // Add to main timers section
-                    embed.addField(bossName,
-                            bossSpawnTime.format(DateTimeFormatter.ofPattern("HH:mm:ss")) + " UTC "
-                                    + bossSpawnTime.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")), false);
                 }
             }
         }
@@ -509,6 +503,27 @@ public class CommandListener extends ListenerAdapter {
             }
             // Insert the "Coming up" section at the beginning of the embed
             embed.addField("🚨 Coming up:", comingUpBuilder.toString(), false);
+        }
+    
+        // Add main timers section
+        for (Map.Entry<String, TimerData> entry : allTimers.entrySet()) {
+            String bossName = entry.getKey();
+            TimerData timerData = entry.getValue();
+    
+            if (!"Skipped".equals(timerData.getStatus()) && !"Forgotten".equals(timerData.getStatus())) {
+                LocalDateTime bossSpawnTime = LocalDateTime.parse(timerData.getBossSpawnTime(),
+                        DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"));
+    
+                // Calculate the time difference in hours
+                long hoursUntilSpawn = Duration.between(LocalDateTime.now(ZoneOffset.UTC), bossSpawnTime).toHours();
+    
+                if (hoursUntilSpawn > 12) {
+                    // Add to main timers section
+                    embed.addField(bossName,
+                            bossSpawnTime.format(DateTimeFormatter.ofPattern("HH:mm:ss")) + " UTC "
+                                    + bossSpawnTime.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")), false);
+                }
+            }
         }
     
         // Add "Skipped / Forgotten" section
@@ -537,7 +552,7 @@ public class CommandListener extends ListenerAdapter {
                 }
             });
         }
-    }
+    }    
     
 
     private void handleEditTimer(MessageReceivedEvent event, String message) {
