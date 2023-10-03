@@ -3,6 +3,7 @@ package discord.worldbosses;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent;
@@ -77,9 +78,15 @@ public class CommandListener extends ListenerAdapter {
             return;
         this.jda = event.getJDA();
         String message = event.getMessage().getContentRaw();
-
+    
         if (message.startsWith("!setDesignatedChannel")) {
-            handleSetDesignatedChannel(event);
+            // Check if the user has the ADMINISTRATOR permission
+            Member member = event.getMember();
+            if (member != null && member.hasPermission(Permission.ADMINISTRATOR)) {
+                handleSetDesignatedChannel(event);
+            } else {
+                event.getChannel().sendMessage("You don't have permission to use this command!").queue();
+            }
         } else if (message.startsWith("!addtimer")) {
             handleAddTimer(event, message);
         } else if (userStates.getOrDefault(event.getAuthor().getId(), "").equals("awaiting_time_input")) {
@@ -94,6 +101,7 @@ public class CommandListener extends ListenerAdapter {
             handleAwaitingKilledTime(event, message);
         }
     }
+    
 
     @Override
     public void onGenericInteractionCreate(GenericInteractionCreateEvent event) {
