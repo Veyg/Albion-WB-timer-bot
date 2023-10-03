@@ -46,10 +46,12 @@ public class CommandListener extends ListenerAdapter {
     private ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private Set<String> sentNotifications = new HashSet<>();
 
-    // TODO: WE NEED TO STORE DESIGNATED CHANNEL NAME
-    public CommandListener() {
+    public CommandListener(JDA jda, String designatedChannelId) {
+        this.jda = jda;
+        this.designatedChannelId = designatedChannelId;
         scheduleLoadedTimers();
         startPeriodicCheck();
+        sendTimersToChannel();
     }
 
     private void startPeriodicCheck() {
@@ -91,7 +93,6 @@ public class CommandListener extends ListenerAdapter {
         } else if (userStates.getOrDefault(event.getAuthor().getId(), "").equals("awaiting_killed_time")) {
             handleAwaitingKilledTime(event, message);
         }
-
     }
 
     @Override
@@ -137,6 +138,10 @@ public class CommandListener extends ListenerAdapter {
     private void handleSetDesignatedChannel(MessageReceivedEvent event) {
         if (event.getMember().hasPermission(Permission.ADMINISTRATOR)) {
             designatedChannelId = event.getChannel().getId();
+    
+            // Save the designated channel ID to the config file
+            ConfigManager.setDesignatedChannelId(designatedChannelId);
+    
             event.getChannel().sendMessage("This channel is now set as the designated channel for timers.")
                     .queue(response -> {
                         response.delete().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
@@ -160,6 +165,7 @@ public class CommandListener extends ListenerAdapter {
         event.getMessage().delete().queue(); // Delete user's command message
         sendTimersToChannel();
     }
+    
 
     private void handleAddTimer(MessageReceivedEvent event, String message) {
         if (!event.getChannel().getId().equals(designatedChannelId)) {
@@ -406,9 +412,6 @@ public class CommandListener extends ListenerAdapter {
 
             }, delay, TimeUnit.SECONDS);
         } else if (currentTime.isBefore(bossSpawnTime)) {
-            // Sending notification immediately
-            // TODO: In order to send the notification immediately, we need to store the
-            // designated channel somewhere
             if (designatedChannelId != null) {
                 try {
                     sendBossNotification(mapName, time);
@@ -425,7 +428,7 @@ public class CommandListener extends ListenerAdapter {
         }
     }
 
-    private void sendTimersToChannel() {
+    void sendTimersToChannel() {
         System.out.println("Sending timers to channel");
         if (designatedChannelId == null) {
             System.out.println("Designated channel ID is null.");
