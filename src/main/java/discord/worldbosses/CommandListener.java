@@ -6,7 +6,6 @@ import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.components.selections.SelectMenuInteraction;
@@ -90,10 +89,56 @@ public class CommandListener extends ListenerAdapter {
     
 
     private void handleEditTimer(SlashCommandInteractionEvent event) {
+        String mapName = event.getOption("mapname").getAsString();
+        String newTimeInput = event.getOption("newtime").getAsString();
+        String newDateInput = event.getOption("newdate").getAsString();
+    
+        // Validate the time format
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+        LocalTime parsedNewTime;
+        try {
+            parsedNewTime = LocalTime.parse(newTimeInput, timeFormatter);
+        } catch (DateTimeParseException e) {
+            event.reply("Invalid time format for new time. Please use HH:mm:ss format.").setEphemeral(true).queue();
+            return;
+        }
+    
+        // Validate the date format
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("d/MM/yyyy");
+        LocalDate parsedNewDate;
+        try {
+            parsedNewDate = LocalDate.parse(newDateInput, dateFormatter);
+        } catch (DateTimeParseException e) {
+            event.reply("Invalid date format for new date. Please use d/MM/yyyy format.").setEphemeral(true).queue();
+            return;
+        }
+    
+        // Combine the date and time to form the full new time
+        String fullNewTime = parsedNewDate.format(dateFormatter) + " " + parsedNewTime.format(timeFormatter);
+    
+        // Update the timer using BossManager
+        bossManager.editTimer(mapName, fullNewTime);
+    
+        // Provide feedback to the user
+        event.reply("Timer for " + mapName + " has been updated to " + fullNewTime).queue();
     }
+    
+    
 
     private void handleDeleteTimer(SlashCommandInteractionEvent event) {
+        String mapName = event.getOption("mapname").getAsString();
+    
+        // Check if the timer exists before deleting
+        if (bossManager.getAllTimers().containsKey(mapName)) {
+            bossManager.deleteTimer(mapName);
+            event.reply("Timer for " + mapName + " has been deleted.").queue();
+        } else {
+            event.reply("Failed to delete timer for " + mapName + ". It might not exist.").setEphemeral(true).queue();
+        }
     }
+    
+    
+    
 
     private void handleAddTimer(SlashCommandInteractionEvent event) {
         String timeInput = event.getOption("time").getAsString();
@@ -193,72 +238,6 @@ public class CommandListener extends ListenerAdapter {
                     });
         }
         sendTimersToChannel();
-    }
-
-    private void handleAwaitingTimeInput(MessageReceivedEvent event, String message) {
-        String userId = event.getAuthor().getId();
-        System.out.println("Received time input: " + message); // Logging the input
-
-        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
-        LocalTime parsedTime = null;
-
-        try {
-            parsedTime = LocalTime.parse(message, timeFormatter);
-            System.out.println("Successfully parsed time: " + parsedTime); // Logging successful parsing
-        } catch (DateTimeParseException e) {
-            System.out.println("Error parsing time: " + e.getMessage()); // Logging the error
-            event.getChannel().sendMessage("Invalid time format. Please use HH:mm:ss format.").queue();
-            return; // Exit the method if parsing fails
-        }
-
-        // If we reach here, it means parsing was successful
-        LocalDate twoDaysLater = LocalDate.now(ZoneOffset.UTC).plusDays(2);
-        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("d/MM/yyyy");
-        String formattedDate = twoDaysLater.format(dateFormatter);
-
-        // Append the date to the time
-        String fullTime = parsedTime.toString() + " " + formattedDate;
-
-        bossManager.addTimer(userStates.get(userId + "_selected_map"), fullTime);
-        event.getChannel()
-                .sendMessage("Timer added for " + userStates.get(userId + "_selected_map") + " at " + fullTime)
-                .queue(response -> {
-                    response.delete().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
-                        if (throwable instanceof ErrorResponseException) {
-                            System.out.println("Error deleting message with ID: " + response.getId() + ". Error: "
-                                    + throwable.getMessage());
-                        }
-                    });
-                });
-        userStates.remove(userId);
-        userStates.remove(userId + "_selected_map");
-
-        sendTimersToChannel();
-
-    }
-
-    private void handleDeleteTimer(MessageReceivedEvent event, String message) {
-        String[] parts = message.split(" ", 2);
-        if (parts.length == 2) {
-            String mapName = parts[1];
-            bossManager.deleteTimer(mapName);
-            event.getChannel().sendMessage("Timer for " + mapName + " deleted.").queue(response -> {
-                response.delete().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
-                    if (throwable instanceof ErrorResponseException) {
-                        System.out.println("Error deleting message with ID: " + response.getId() + ". Error: "
-                                + throwable.getMessage());
-                    }
-                });
-            });
-            sendTimersToChannel();
-        } else {
-            event.getChannel().sendMessage("Invalid command format. Use `!deleteTimer [MapName]`").queue();
-        }
-    }
-
-    private void handleTestNotification(MessageReceivedEvent event) {
-        sendBossNotification("TestMap", "20:00:00 1/01/2023");
-        event.getMessage().delete().queue(); // Delete user's command message
     }
 
     private void sendBossNotification(String mapName, String time) {
@@ -493,40 +472,6 @@ public class CommandListener extends ListenerAdapter {
                 }
             });
         }
-    }    
-    
-
-    private void handleEditTimer(MessageReceivedEvent event, String message) {
-        String[] parts = message.split(" ", 4); // Split into 4 parts
-        if (parts.length == 4) {
-            String mapName = parts[1] + " " + parts[2]; // Combine the two parts of the map name
-            String newTime = parts[3].split(" ")[0];
-            String newDate = parts[3].split(" ")[1];
-            bossManager.editTimer(mapName, newTime + " " + newDate);
-            event.getChannel().sendMessage("Timer for " + mapName + " updated to " + newTime + " on " + newDate)
-                    .queue(response -> {
-                        response.delete().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
-                            if (throwable instanceof ErrorResponseException) {
-                                System.out.println("Error deleting message with ID: " + response.getId()
-                                        + ". Error: " + throwable.getMessage());
-                            }
-                        });
-                    });
-            sendTimersToChannel();
-        } else {
-            event.getChannel()
-                    .sendMessage(
-                            "Invalid command format. Use '!editTimer [mapNamePart1] [mapNamePart2] [HH:MM:SS] [d/MM/yyyy]'")
-                    .queue(response -> {
-                        response.delete().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
-                            if (throwable instanceof ErrorResponseException) {
-                                System.out.println("Error deleting message with ID: " + response.getId()
-                                        + ". Error: " + throwable.getMessage());
-                            }
-                        });
-                    });
-        }
-        event.getMessage().delete().queue(); // Delete user's command message
     }
 
     private String extractMapNameFromMessage(String messageContent) {

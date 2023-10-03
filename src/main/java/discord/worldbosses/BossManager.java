@@ -203,5 +203,6 @@ public class BossManager {
         public void setStatusTime(String statusTime) {
             this.statusTime = statusTime;
         }
+        
     }
 }
