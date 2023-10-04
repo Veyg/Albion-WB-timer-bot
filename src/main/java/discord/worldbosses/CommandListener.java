@@ -9,6 +9,7 @@ import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.components.selections.SelectMenuInteraction;
+import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.interactions.components.buttons.ButtonInteraction;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
@@ -67,6 +68,7 @@ public class CommandListener extends ListenerAdapter {
             }
         }, 0, 5, TimeUnit.MINUTES);
     }
+
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
         switch (event.getName()) {
@@ -86,13 +88,22 @@ public class CommandListener extends ListenerAdapter {
                 event.reply("Unknown command.").setEphemeral(true).queue();
         }
     }
-    
 
     private void handleEditTimer(SlashCommandInteractionEvent event) {
-        String mapName = event.getOption("mapname").getAsString();
-        String newTimeInput = event.getOption("newtime").getAsString();
-        String newDateInput = event.getOption("newdate").getAsString();
-    
+        OptionMapping mapNameOption = event.getOption("map");
+        OptionMapping newTimeOption = event.getOption("newtime");
+        OptionMapping newDateOption = event.getOption("newdate");
+
+        if (mapNameOption == null || newTimeOption == null || newDateOption == null) {
+            event.reply("Required options were not provided. Please ensure you provide mapname, newtime, and newdate.")
+                    .setEphemeral(true).queue();
+            return;
+        }
+
+        String mapName = mapNameOption.getAsString();
+        String newTimeInput = newTimeOption.getAsString();
+        String newDateInput = newDateOption.getAsString();
+
         // Validate the time format
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
         LocalTime parsedNewTime;
@@ -102,7 +113,7 @@ public class CommandListener extends ListenerAdapter {
             event.reply("Invalid time format for new time. Please use HH:mm:ss format.").setEphemeral(true).queue();
             return;
         }
-    
+
         // Validate the date format
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("d/MM/yyyy");
         LocalDate parsedNewDate;
@@ -112,22 +123,28 @@ public class CommandListener extends ListenerAdapter {
             event.reply("Invalid date format for new date. Please use d/MM/yyyy format.").setEphemeral(true).queue();
             return;
         }
-    
+
         // Combine the date and time to form the full new time
-        String fullNewTime = parsedNewDate.format(dateFormatter) + " " + parsedNewTime.format(timeFormatter);
-    
+        LocalDateTime combinedDateTime = LocalDateTime.of(parsedNewDate, parsedNewTime);
+        String fullNewTime = combinedDateTime.format(DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"));
+
         // Update the timer using BossManager
         bossManager.editTimer(mapName, fullNewTime);
-    
+        sendTimersToChannel();
         // Provide feedback to the user
         event.reply("Timer for " + mapName + " has been updated to " + fullNewTime).queue();
     }
-    
-    
 
     private void handleDeleteTimer(SlashCommandInteractionEvent event) {
-        String mapName = event.getOption("mapname").getAsString();
-    
+        OptionMapping mapNameOption = event.getOption("map"); // Changed from "mapn" to "map"
+
+        if (mapNameOption == null) {
+            event.reply("Required option 'map' was not provided.").setEphemeral(true).queue();
+            return;
+        }
+
+        String mapName = mapNameOption.getAsString();
+
         // Check if the timer exists before deleting
         if (bossManager.getAllTimers().containsKey(mapName)) {
             bossManager.deleteTimer(mapName);
@@ -136,14 +153,11 @@ public class CommandListener extends ListenerAdapter {
             event.reply("Failed to delete timer for " + mapName + ". It might not exist.").setEphemeral(true).queue();
         }
     }
-    
-    
-    
 
     private void handleAddTimer(SlashCommandInteractionEvent event) {
         String timeInput = event.getOption("time").getAsString();
         String mapName = event.getOption("map").getAsString();
-    
+
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
         LocalTime parsedTime;
         try {
@@ -152,23 +166,24 @@ public class CommandListener extends ListenerAdapter {
             event.reply("Invalid time format. Please use HH:mm:ss format.").setEphemeral(true).queue();
             return;
         }
-    
+
         // Ensure the time is always formatted as "HH:mm:ss"
-        String formattedTime = String.format("%02d:%02d:%02d", parsedTime.getHour(), parsedTime.getMinute(), parsedTime.getSecond());
-    
+        String formattedTime = String.format("%02d:%02d:%02d", parsedTime.getHour(), parsedTime.getMinute(),
+                parsedTime.getSecond());
+
         LocalDate twoDaysLater = LocalDate.now(ZoneOffset.UTC).plusDays(2);
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("d/MM/yyyy");
         String formattedDate = twoDaysLater.format(dateFormatter);
-    
+
         String fullTime = formattedDate + " " + formattedTime;
-    
+
         // Store the timer using BossManager
         bossManager.addTimer(mapName, fullTime);
         bossManager.saveTimers(); // This line needs the saveTimers method to be public in BossManager
-    
+
         // Provide feedback to the user
         event.reply("Timer added for " + mapName + " at " + fullTime).queue();
-    }  
+    }
 
     @Override
     public void onGenericInteractionCreate(GenericInteractionCreateEvent event) {
@@ -213,10 +228,10 @@ public class CommandListener extends ListenerAdapter {
     private void handleSetDesignatedChannel(SlashCommandInteractionEvent event) {
         if (event.getMember().hasPermission(Permission.ADMINISTRATOR)) {
             designatedChannelId = ((TextChannel) event.getChannel()).getId();
-    
+
             // Save the designated channel ID to the config file
             ConfigManager.setDesignatedChannelId(designatedChannelId);
-    
+
             event.reply("This channel is now set as the designated channel for timers.")
                     .queue(response -> {
                         response.deleteOriginal().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
@@ -362,51 +377,51 @@ public class CommandListener extends ListenerAdapter {
             System.out.println("Designated channel ID is null.");
             return; // No designated channel set
         }
-    
+
         TextChannel designatedChannel = jda.getTextChannelById(designatedChannelId);
         if (designatedChannel == null) {
             System.out.println("Designated channel not found.");
             return; // Designated channel not found
         }
-    
+
         Map<String, TimerData> allTimers = bossManager.getAllTimers();
         if (allTimers.isEmpty()) {
             System.out.println("No timers to send.");
             return; // No timers to send
         }
-    
+
         EmbedBuilder embed = new EmbedBuilder();
         embed.setTitle("World Boss Timers");
         embed.setColor(0x00FFFF);
-    
+
         // Create lists for upcoming, skipped/forgotten, and all timers
         List<Map.Entry<String, TimerData>> upcomingTimers = new ArrayList<>();
         List<Map.Entry<String, TimerData>> skippedForgottenTimers = new ArrayList<>();
-    
+
         for (Map.Entry<String, TimerData> entry : allTimers.entrySet()) {
             TimerData timerData = entry.getValue();
-    
+
             if ("Skipped".equals(timerData.getStatus()) || "Forgotten".equals(timerData.getStatus())) {
                 // Add to skipped/forgotten section
                 skippedForgottenTimers.add(entry);
             } else {
                 LocalDateTime bossSpawnTime = LocalDateTime.parse(timerData.getBossSpawnTime(),
                         DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"));
-    
+
                 // Calculate the time difference in hours
                 long hoursUntilSpawn = Duration.between(LocalDateTime.now(ZoneOffset.UTC), bossSpawnTime).toHours();
-    
+
                 if (hoursUntilSpawn <= 12) {
                     // Add to upcoming section if within 12 hours
                     upcomingTimers.add(entry);
                 }
             }
         }
-    
+
         // Sort upcoming timers by spawn time
         upcomingTimers.sort(Comparator.comparing(e -> LocalDateTime.parse(e.getValue().getBossSpawnTime(),
                 DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"))));
-    
+
         // Add "Coming up" section
         if (!upcomingTimers.isEmpty()) {
             StringBuilder comingUpBuilder = new StringBuilder();
@@ -424,28 +439,29 @@ public class CommandListener extends ListenerAdapter {
             // Insert the "Coming up" section at the beginning of the embed
             embed.addField("🚨 Coming up:", comingUpBuilder.toString(), false);
         }
-    
+
         // Add main timers section
         for (Map.Entry<String, TimerData> entry : allTimers.entrySet()) {
             String bossName = entry.getKey();
             TimerData timerData = entry.getValue();
-    
+
             if (!"Skipped".equals(timerData.getStatus()) && !"Forgotten".equals(timerData.getStatus())) {
                 LocalDateTime bossSpawnTime = LocalDateTime.parse(timerData.getBossSpawnTime(),
                         DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"));
-    
+
                 // Calculate the time difference in hours
                 long hoursUntilSpawn = Duration.between(LocalDateTime.now(ZoneOffset.UTC), bossSpawnTime).toHours();
-    
+
                 if (hoursUntilSpawn > 12) {
                     // Add to main timers section
                     embed.addField(bossName,
                             bossSpawnTime.format(DateTimeFormatter.ofPattern("HH:mm:ss")) + " UTC "
-                                    + bossSpawnTime.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")), false);
+                                    + bossSpawnTime.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
+                            false);
                 }
             }
         }
-    
+
         // Add "Skipped / Forgotten" section
         if (!skippedForgottenTimers.isEmpty()) {
             StringBuilder skippedForgottenBuilder = new StringBuilder();
@@ -459,14 +475,16 @@ public class CommandListener extends ListenerAdapter {
             }
             embed.addField("🕣 Skipped / Forgotten:", skippedForgottenBuilder.toString(), false);
         }
-    
+
         // Send or edit the message
         if (timerMessageId == null) {
             designatedChannel.sendMessageEmbeds(embed.build()).queue(message -> timerMessageId = message.getId());
         } else {
             designatedChannel.editMessageEmbedsById(timerMessageId, embed.build()).queue(null, throwable -> {
-                if (throwable instanceof ErrorResponseException && ((ErrorResponseException) throwable).getErrorCode() == 10008) {
-                    designatedChannel.sendMessageEmbeds(embed.build()).queue(message -> timerMessageId = message.getId());
+                if (throwable instanceof ErrorResponseException
+                        && ((ErrorResponseException) throwable).getErrorCode() == 10008) {
+                    designatedChannel.sendMessageEmbeds(embed.build())
+                            .queue(message -> timerMessageId = message.getId());
                 } else {
                     System.out.println("Error editing message: " + throwable.getMessage());
                 }
