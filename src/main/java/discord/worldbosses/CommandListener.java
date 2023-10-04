@@ -48,7 +48,6 @@ public class CommandListener extends ListenerAdapter {
     public CommandListener(JDA jda, String designatedChannelId) {
         this.jda = jda;
         this.designatedChannelId = designatedChannelId;
-        scheduleLoadedTimers();
         startPeriodicCheck();
         sendTimersToChannel();
     }
@@ -57,9 +56,9 @@ public class CommandListener extends ListenerAdapter {
         scheduler.scheduleAtFixedRate(() -> {
             LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
             for (Map.Entry<String, TimerData> entry : bossManager.getAllTimers().entrySet()) {
-                LocalDateTime notificationTime = LocalDateTime.parse(entry.getValue().getNotificationTime(),
+                LocalDateTime bossSpawnTime = LocalDateTime.parse(entry.getValue().getBossSpawnTime(),
                         DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"));
-                if (ChronoUnit.MINUTES.between(now, notificationTime) <= 5) {
+                if (ChronoUnit.MINUTES.between(now, bossSpawnTime) <= 20) {
                     // Check if the boss has been marked as skipped or forgotten
                     if (!bossManager.isSkippedOrForgotten(entry.getKey())) {
                         sendBossNotification(entry.getKey(), entry.getValue().getBossSpawnTime());
@@ -68,7 +67,7 @@ public class CommandListener extends ListenerAdapter {
             }
         }, 0, 5, TimeUnit.MINUTES);
     }
-
+    
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
         switch (event.getName()) {
@@ -148,6 +147,7 @@ public class CommandListener extends ListenerAdapter {
         // Check if the timer exists before deleting
         if (bossManager.getAllTimers().containsKey(mapName)) {
             bossManager.deleteTimer(mapName);
+            sendTimersToChannel();
             event.reply("Timer for " + mapName + " has been deleted.").queue();
         } else {
             event.reply("Failed to delete timer for " + mapName + ". It might not exist.").setEphemeral(true).queue();
@@ -157,7 +157,7 @@ public class CommandListener extends ListenerAdapter {
     private void handleAddTimer(SlashCommandInteractionEvent event) {
         String timeInput = event.getOption("time").getAsString();
         String mapName = event.getOption("map").getAsString();
-
+    
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
         LocalTime parsedTime;
         try {
@@ -166,24 +166,25 @@ public class CommandListener extends ListenerAdapter {
             event.reply("Invalid time format. Please use HH:mm:ss format.").setEphemeral(true).queue();
             return;
         }
-
+    
         // Ensure the time is always formatted as "HH:mm:ss"
         String formattedTime = String.format("%02d:%02d:%02d", parsedTime.getHour(), parsedTime.getMinute(),
                 parsedTime.getSecond());
-
+    
         LocalDate twoDaysLater = LocalDate.now(ZoneOffset.UTC).plusDays(2);
-        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("d/MM/yyyy");
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
         String formattedDate = twoDaysLater.format(dateFormatter);
-
-        String fullTime = formattedDate + " " + formattedTime;
-
+    
+        String fullTime = formattedTime + " " + formattedDate;
+    
         // Store the timer using BossManager
         bossManager.addTimer(mapName, fullTime);
         bossManager.saveTimers(); // This line needs the saveTimers method to be public in BossManager
-
+        sendTimersToChannel();
         // Provide feedback to the user
         event.reply("Timer added for " + mapName + " at " + fullTime).queue();
     }
+    
 
     @Override
     public void onGenericInteractionCreate(GenericInteractionCreateEvent event) {
@@ -216,7 +217,6 @@ public class CommandListener extends ListenerAdapter {
                 userStates.remove(userId + "_input_date");
                 selectMenu.getMessage().delete().queue();
 
-                scheduleBossNotification(selectedMap, fullTime);
                 sendTimersToChannel();
             } else if (customId.equals("map-selector") && "awaiting_map_selection".equals(userStates.get(userId))) {
                 // This is for other functionalities that might require map selection without
@@ -302,72 +302,6 @@ public class CommandListener extends ListenerAdapter {
             default:
                 // Handle other button interactions if any
                 break;
-        }
-    }
-
-    private void scheduleLoadedTimers() {
-        for (Map.Entry<String, TimerData> entry : bossManager.getAllTimers().entrySet()) {
-            String mapName = entry.getKey();
-            String notificationTime = entry.getValue().getNotificationTime();
-
-            // Include the current date in the uniqueNotificationId
-            String currentDate = LocalDate.now(ZoneOffset.UTC).toString();
-            String uniqueNotificationId = mapName + "_" + notificationTime + "_" + currentDate;
-
-            if (sentNotifications.contains(uniqueNotificationId)) {
-                System.out.println("Notification for " + mapName + " at " + notificationTime
-                        + " has already been sent today. Skipping.");
-                continue;
-            }
-
-            System.out.println("Sending notification with Scheduled timers");
-            scheduleBossNotification(mapName, notificationTime);
-        }
-    }
-
-    private void scheduleBossNotification(String mapName, String time) {
-        if (bossManager.isSkippedOrForgotten(mapName)) {
-            return; // Don't schedule a notification for a boss that's marked as skipped or
-                    // forgotten
-        }
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy");
-        LocalDateTime bossSpawnTime = LocalDateTime.parse(time, formatter);
-        LocalDateTime notificationTime = bossSpawnTime.minusMinutes(20);
-        LocalDateTime currentTime = LocalDateTime.now(ZoneOffset.UTC);
-        // long delay = LocalDateTime.now(ZoneOffset.UTC).until(notificationTime,
-        // ChronoUnit.SECONDS);
-
-        System.out.println("Boss spawn time: " + bossSpawnTime);
-        System.out.println("Notification time: " + notificationTime);
-        System.out.println("Scheduling boss notification for: " + time);
-        System.out.println("Current time: " + currentTime);
-
-        if (currentTime.isBefore(notificationTime)) {
-            long delay = currentTime.until(notificationTime, ChronoUnit.SECONDS);
-            System.out.println("Calculated delay in seconds: " + delay);
-            scheduler.schedule(() -> {
-                try {
-                    sendBossNotification(mapName, time);
-                } catch (Exception e) {
-                    System.out.println("Error sending boss notification: " + e.getMessage());
-                    e.printStackTrace();
-                }
-
-            }, delay, TimeUnit.SECONDS);
-        } else if (currentTime.isBefore(bossSpawnTime)) {
-            if (designatedChannelId != null) {
-                try {
-                    sendBossNotification(mapName, time);
-                } catch (Exception e) {
-                    System.out.println("Error sending boss notification: " + e.getMessage());
-                    e.printStackTrace();
-                }
-
-            } else {
-                System.out.println("Designated channel is null");
-            }
-        } else {
-            System.out.println("Boss spawn time has passed, not scheduling notification");
         }
     }
 

@@ -20,8 +20,6 @@ public class BossManager {
     private Map<String, TimerData> mapTimers = new HashMap<>();
     private final Gson gson = new Gson();
     private Set<String> skippedAndForgottenBosses = new HashSet<>();
-    private static final int NOTIFICATION_OFFSET_MINUTES = 20;
-    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy");
 
     public Set<String> getSkippedAndForgottenBosses() {
         return new HashSet<>(skippedAndForgottenBosses);
@@ -32,9 +30,8 @@ public class BossManager {
     }
 
     public void addTimer(String mapName, String time) {
-        String notificationTime = calculateNotificationTime(time);
-        System.out.println("Added timer for " + mapName + " at " + time + " with notification at " + notificationTime);
-        mapTimers.put(mapName, new TimerData(time, notificationTime));
+        System.out.println("Added timer for " + mapName + " at " + time);
+        mapTimers.put(mapName, new TimerData(time));
         skippedAndForgottenBosses.remove(mapName);
         saveTimers();
     }
@@ -44,20 +41,14 @@ public class BossManager {
         return data == null ? null : data.getBossSpawnTime();
     }
 
-    public String getNotificationTime(String mapName) {
-        TimerData data = mapTimers.get(mapName);
-        return data == null ? null : data.getNotificationTime();
-    }
-
     public Map<String, TimerData> getAllTimers() {
         return new HashMap<>(mapTimers);
     }
 
     public void editTimer(String mapName, String newTime) {
-        String notificationTime = calculateNotificationTime(newTime);
         System.out.println(
-                "Edited timer for " + mapName + " to " + newTime + " with notification at " + notificationTime);
-        mapTimers.put(mapName, new TimerData(newTime, notificationTime));
+                "Edited timer for " + mapName + " to " + newTime);
+        mapTimers.put(mapName, new TimerData(newTime));
         saveTimers();
     }
 
@@ -65,13 +56,6 @@ public class BossManager {
         mapTimers.remove(mapName);
         System.out.println("Deleted timer for " + mapName);
         saveTimers();
-    }
-
-    private String calculateNotificationTime(String bossSpawnTime) {
-        
-        LocalDateTime bossTime = LocalDateTime.parse(bossSpawnTime, DATE_TIME_FORMATTER);
-        LocalDateTime notificationTime = bossTime.minusMinutes(NOTIFICATION_OFFSET_MINUTES);
-        return notificationTime.format(DATE_TIME_FORMATTER);
     }
 
     public void saveTimers() {
@@ -122,8 +106,6 @@ public class BossManager {
             // Set the new spawn time and notification time
             DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy");
             data.setBossSpawnTime(newSpawnDateTime.format(dateTimeFormatter));
-            data.setNotificationTime(calculateNotificationTime(newSpawnDateTime.format(dateTimeFormatter)));
-
             // Reset the status
             data.setStatus(null);
             data.setStatusTime(null);
@@ -163,13 +145,11 @@ public class BossManager {
 
     public static class TimerData {
         private String bossSpawnTime;
-        private String notificationTime;
         private String status;
         private String statusTime;
 
-        public TimerData(String bossSpawnTime, String notificationTime) {
+        public TimerData(String bossSpawnTime) {
             this.bossSpawnTime = bossSpawnTime;
-            this.notificationTime = notificationTime;
         }
 
         public String getBossSpawnTime() {
@@ -178,14 +158,6 @@ public class BossManager {
 
         public void setBossSpawnTime(String bossSpawnTime) {
             this.bossSpawnTime = bossSpawnTime;
-        }
-
-        public String getNotificationTime() {
-            return notificationTime;
-        }
-
-        public void setNotificationTime(String notificationTime) {
-            this.notificationTime = notificationTime;
         }
 
         public String getStatus() {
@@ -203,6 +175,6 @@ public class BossManager {
         public void setStatusTime(String statusTime) {
             this.statusTime = statusTime;
         }
-        
+
     }
 }
