@@ -13,6 +13,7 @@ import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.interactions.components.buttons.ButtonInteraction;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -67,7 +68,7 @@ public class CommandListener extends ListenerAdapter {
             }
         }, 0, 5, TimeUnit.MINUTES);
     }
-    
+
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
         switch (event.getName()) {
@@ -153,11 +154,11 @@ public class CommandListener extends ListenerAdapter {
             event.reply("Failed to delete timer for " + mapName + ". It might not exist.").setEphemeral(true).queue();
         }
     }
-
+    // TODO: adding two days to the time needed as in other TODO
     private void handleAddTimer(SlashCommandInteractionEvent event) {
         String timeInput = event.getOption("time").getAsString();
         String mapName = event.getOption("map").getAsString();
-    
+
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
         LocalTime parsedTime;
         try {
@@ -166,17 +167,17 @@ public class CommandListener extends ListenerAdapter {
             event.reply("Invalid time format. Please use HH:mm:ss format.").setEphemeral(true).queue();
             return;
         }
-    
+
         // Ensure the time is always formatted as "HH:mm:ss"
         String formattedTime = String.format("%02d:%02d:%02d", parsedTime.getHour(), parsedTime.getMinute(),
                 parsedTime.getSecond());
-    
+
         LocalDate twoDaysLater = LocalDate.now(ZoneOffset.UTC).plusDays(2);
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
         String formattedDate = twoDaysLater.format(dateFormatter);
-    
+
         String fullTime = formattedTime + " " + formattedDate;
-    
+
         // Store the timer using BossManager
         bossManager.addTimer(mapName, fullTime);
         bossManager.saveTimers(); // This line needs the saveTimers method to be public in BossManager
@@ -184,7 +185,6 @@ public class CommandListener extends ListenerAdapter {
         // Provide feedback to the user
         event.reply("Timer added for " + mapName + " at " + fullTime).queue();
     }
-    
 
     @Override
     public void onGenericInteractionCreate(GenericInteractionCreateEvent event) {
@@ -446,4 +446,28 @@ public class CommandListener extends ListenerAdapter {
         // Delete the original boss notification
         event.getMessage().delete().queue();
     }
+    // TODO: For now after marking boss as killed it doesnt add two days to it, adding two days for the time is needed. So date + 2 days
+    @Override
+    public void onMessageReceived(MessageReceivedEvent event) {
+        String userId = event.getAuthor().getId();
+        if ("awaiting_killed_time".equals(userStates.get(userId))) {
+            String killedTime = event.getMessage().getContentRaw();
+            String mapName = userStates.get(userId + "_mapName");
+
+            // Validate the time format and update the boss timer
+            DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+            try {
+                LocalTime.parse(killedTime, timeFormatter);
+                bossManager.markBossAsKilled(mapName, killedTime);
+                event.getChannel().sendMessage("Boss timer for " + mapName + " has been updated.").queue();
+            } catch (DateTimeParseException e) {
+                event.getChannel().sendMessage("Invalid time format. Please use HH:mm:ss format.").queue();
+            }
+
+            // Clear the user's state
+            userStates.remove(userId);
+            userStates.remove(userId + "_mapName");
+        }
+    }
+
 }
