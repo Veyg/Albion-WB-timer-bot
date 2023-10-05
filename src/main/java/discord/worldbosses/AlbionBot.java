@@ -17,9 +17,11 @@ public class AlbionBot {
 
         String designatedChannelId = ConfigManager.getDesignatedChannelId();
         CommandListener commandListener = new CommandListener(jda, designatedChannelId);
+
+        // Add the command listener using the commandListener variable
         jda.addEventListener(commandListener);
-        
-         /******** This is only needed when you want to register commands. ********/
+            
+        /******** This is only needed when you want to register commands. ********/
         // new SlashCommandRegistrar(jda).registerCommands(); 
     }
 }
