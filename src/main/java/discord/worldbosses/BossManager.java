@@ -149,7 +149,7 @@ public class BossManager {
     public void markBossAsForgotten(String mapName) {
         TimerData data = mapTimers.get(mapName);
         if (data != null) {
-            data.setStatus("forgotten");
+            data.setStatus("Forgotten");
             skippedAndForgottenBosses.add(mapName);
             data.setStatusTime(
                     LocalDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy")));

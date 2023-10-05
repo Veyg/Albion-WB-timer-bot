@@ -50,9 +50,11 @@ public class CommandListener extends ListenerAdapter {
     public CommandListener(JDA jda, String designatedChannelId) {
         this.jda = jda;
         this.designatedChannelId = designatedChannelId;
+
         startPeriodicCheck();
         sendTimersToChannel();
     }
+
     private void scheduleMessageDeletion(Message message, long delayMillis) {
         new java.util.Timer().schedule(new java.util.TimerTask() {
             @Override
@@ -60,7 +62,7 @@ public class CommandListener extends ListenerAdapter {
                 message.delete().queue();
             }
         }, delayMillis);
-    }    
+    }
 
     private void startPeriodicCheck() {
         scheduler.scheduleAtFixedRate(() -> {
@@ -80,6 +82,12 @@ public class CommandListener extends ListenerAdapter {
 
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
+        if (!event.getChannel().getId().equals(designatedChannelId)
+                && !event.getName().equals("setdesignatedchannel")) {
+            event.reply("Don't use it here retard 🤓").setEphemeral(true).queue();
+            return; // Ignore interactions outside the designated channel
+        }
+
         switch (event.getName()) {
             case "setdesignatedchannel":
                 handleSetDesignatedChannel(event);
@@ -141,7 +149,9 @@ public class CommandListener extends ListenerAdapter {
         bossManager.editTimer(mapName, fullNewTime);
         sendTimersToChannel();
         // Provide feedback to the user
-        event.reply("Timer for " + mapName + " has been updated to " + fullNewTime).queue();
+        event.reply("Timer for " + mapName + " has been updated to " + fullNewTime)
+                .queue(response -> scheduleMessageDeletion(response.retrieveOriginal().complete(), 7200000));
+
     }
 
     private void handleDeleteTimer(SlashCommandInteractionEvent event) {
@@ -198,6 +208,9 @@ public class CommandListener extends ListenerAdapter {
 
     @Override
     public void onGenericInteractionCreate(GenericInteractionCreateEvent event) {
+        if (!event.getChannel().getId().equals(designatedChannelId)) {
+            return; // Ignore interactions outside the designated channel
+        }
         this.jda = event.getJDA();
         if (event.getInteraction() instanceof ButtonInteraction) {
             onButtonInteraction((ButtonInteraction) event.getInteraction());
@@ -291,26 +304,23 @@ public class CommandListener extends ListenerAdapter {
                 handleBossKilled(event);
                 break;
             case "boss_skipped":
-                // Delete the original boss notification (the message that had the "Skipped"
-                // button)
                 event.getMessage().delete().queue();
-
-                // Extract map name from the message content (assuming you have this method in
-                // place)
                 String mapNameSkipped = extractMapNameFromMessage(event.getMessage().getContentRaw());
                 bossManager.markBossAsSkipped(mapNameSkipped);
                 sendTimersToChannel();
                 break;
             case "boss_forgot":
-                // Extract map name from the message content (assuming you have this method in
-                // place)
                 String mapNameForgot = extractMapNameFromMessage(event.getMessage().getContentRaw());
                 bossManager.markBossAsForgotten(mapNameForgot);
-                event.reply("Boss was forgotten!").queue();
+                event.reply("Boss was forgotten!").queue(response -> {
+                    response.retrieveOriginal().queue(message -> {
+                        scheduleMessageDeletion(message, 7200000);
+                    });
+                });
                 sendTimersToChannel();
                 break;
+            
             default:
-                // Handle other button interactions if any
                 break;
         }
     }
@@ -321,47 +331,47 @@ public class CommandListener extends ListenerAdapter {
             System.out.println("Designated channel ID is null.");
             return; // No designated channel set
         }
-    
+
         TextChannel designatedChannel = jda.getTextChannelById(designatedChannelId);
         if (designatedChannel == null) {
             System.out.println("Designated channel not found.");
             return; // Designated channel not found
         }
-    
+
         List<Map.Entry<String, TimerData>> sortedTimers = bossManager.getSortedTimers();
         if (sortedTimers.isEmpty()) {
             System.out.println("No timers to send.");
             return; // No timers to send
         }
-    
+
         EmbedBuilder embed = new EmbedBuilder();
         embed.setTitle("World Boss Timers");
         embed.setColor(0x00FFFF);
-    
+
         // Create lists for upcoming, skipped/forgotten, and all timers
         List<Map.Entry<String, TimerData>> upcomingTimers = new ArrayList<>();
         List<Map.Entry<String, TimerData>> skippedForgottenTimers = new ArrayList<>();
-    
+
         for (Map.Entry<String, TimerData> entry : sortedTimers) {
             TimerData timerData = entry.getValue();
-    
+
             if ("Skipped".equals(timerData.getStatus()) || "Forgotten".equals(timerData.getStatus())) {
                 // Add to skipped/forgotten section
                 skippedForgottenTimers.add(entry);
             } else {
                 LocalDateTime bossSpawnTime = LocalDateTime.parse(timerData.getBossSpawnTime(),
                         DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"));
-    
+
                 // Calculate the time difference in hours
                 long hoursUntilSpawn = Duration.between(LocalDateTime.now(ZoneOffset.UTC), bossSpawnTime).toHours();
-    
+
                 if (hoursUntilSpawn <= 12) {
                     // Add to upcoming section if within 12 hours
                     upcomingTimers.add(entry);
                 }
             }
         }
-    
+
         // Add "Coming up" section
         if (!upcomingTimers.isEmpty()) {
             StringBuilder comingUpBuilder = new StringBuilder();
@@ -379,19 +389,19 @@ public class CommandListener extends ListenerAdapter {
             // Insert the "Coming up" section at the beginning of the embed
             embed.addField("🚨 Coming up:", comingUpBuilder.toString(), false);
         }
-    
+
         // Add main timers section
         for (Map.Entry<String, TimerData> entry : sortedTimers) {
             String bossName = entry.getKey();
             TimerData timerData = entry.getValue();
-    
+
             if (!"Skipped".equals(timerData.getStatus()) && !"Forgotten".equals(timerData.getStatus())) {
                 LocalDateTime bossSpawnTime = LocalDateTime.parse(timerData.getBossSpawnTime(),
                         DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"));
-    
+
                 // Calculate the time difference in hours
                 long hoursUntilSpawn = Duration.between(LocalDateTime.now(ZoneOffset.UTC), bossSpawnTime).toHours();
-    
+
                 if (hoursUntilSpawn > 12) {
                     // Add to main timers section
                     embed.addField(bossName,
@@ -401,7 +411,7 @@ public class CommandListener extends ListenerAdapter {
                 }
             }
         }
-    
+
         // Add "Skipped / Forgotten" section
         if (!skippedForgottenTimers.isEmpty()) {
             StringBuilder skippedForgottenBuilder = new StringBuilder();
@@ -415,7 +425,7 @@ public class CommandListener extends ListenerAdapter {
             }
             embed.addField("🕣 Skipped / Forgotten:", skippedForgottenBuilder.toString(), false);
         }
-    
+
         // Send or edit the message
         if (timerMessageId == null) {
             designatedChannel.sendMessageEmbeds(embed.build()).queue(message -> timerMessageId = message.getId());
@@ -431,8 +441,6 @@ public class CommandListener extends ListenerAdapter {
             });
         }
     }
-    
-    
 
     private String extractMapNameFromMessage(String messageContent) {
         String[] lines = messageContent.split("\n");
@@ -459,39 +467,39 @@ public class CommandListener extends ListenerAdapter {
     public void onMessageReceived(MessageReceivedEvent event) {
         String userId = event.getAuthor().getId();
         if ("awaiting_killed_time".equals(userStates.get(userId))) {
-            String killedTimeInput = event.getMessage().getContentRaw().trim();  // Trim the input
-            System.out.println("Received killed time: " + killedTimeInput);  // Debug log
+            String killedTimeInput = event.getMessage().getContentRaw().trim(); // Trim the input
+            System.out.println("Received killed time: " + killedTimeInput); // Debug log
             String mapName = userStates.get(userId + "_mapName");
-    
+
             // Schedule deletion of user's message after 2 hours
             scheduleMessageDeletion(event.getMessage(), 7200000);
-    
+
             // Validate the time format with explicit locale
             DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss", Locale.US);
             try {
                 LocalTime parsedTime = LocalTime.parse(killedTimeInput, timeFormatter);
-    
+
                 // Add two days to the current date
                 LocalDate twoDaysLater = LocalDate.now(ZoneOffset.UTC).plusDays(2);
                 LocalDateTime combinedDateTime = LocalDateTime.of(twoDaysLater, parsedTime);
                 String fullNewTime = combinedDateTime.format(DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"));
-    
+
                 bossManager.markBossAsKilled(mapName, fullNewTime);
                 event.getChannel().sendMessage("Boss timer for " + mapName + " has been updated to " + fullNewTime)
                         .queue(response -> scheduleMessageDeletion(response, 7200000));
-    
+
                 // Clear the user's state
                 userStates.remove(userId);
                 userStates.remove(userId + "_mapName");
             } catch (DateTimeParseException e) {
-                System.out.println("Error parsing time: " + e.getMessage());  // Debug log
+                System.out.println("Error parsing time: " + e.getMessage()); // Debug log
                 event.getChannel().sendMessage("Invalid time format. Please use HH:mm:ss format. Enter the time again.")
-                .queue(response -> scheduleMessageDeletion(response, 30000));        
-        
+                        .queue(response -> scheduleMessageDeletion(response, 30000));
+
                 // Keep the user in the "awaiting_killed_time" state so they can try again
             }
             sendTimersToChannel();
         }
     }
-    
+
 }
