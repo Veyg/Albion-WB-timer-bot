@@ -310,6 +310,7 @@ public class CommandListener extends ListenerAdapter {
                 sendTimersToChannel();
                 break;
             case "boss_forgot":
+                event.getMessage().delete().queue();
                 String mapNameForgot = extractMapNameFromMessage(event.getMessage().getContentRaw());
                 bossManager.markBossAsForgotten(mapNameForgot);
                 event.reply("Boss was forgotten!").queue(response -> {
@@ -485,7 +486,7 @@ public class CommandListener extends ListenerAdapter {
                 String fullNewTime = combinedDateTime.format(DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"));
 
                 bossManager.markBossAsKilled(mapName, fullNewTime);
-                event.getChannel().sendMessage("Boss timer for " + mapName + " has been updated to " + fullNewTime)
+                event.getChannel().sendMessage("Boss killed!. Timer for " + mapName + " has been updated to " + fullNewTime)
                         .queue(response -> scheduleMessageDeletion(response, 7200000));
 
                 // Clear the user's state
