@@ -5,11 +5,10 @@ import com.google.gson.reflect.TypeToken;
 
 import java.io.*;
 import java.lang.reflect.Type;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
@@ -72,10 +71,13 @@ public class BossManager {
         System.out.println("Saving timers to JSON file...");
         try (Writer writer = new FileWriter(FILE_NAME)) {
             gson.toJson(mapTimers, writer);
+            System.out.println("Timers saved successfully.");
         } catch (IOException e) {
+            System.err.println("Error saving timers to file: " + e.getMessage());
             e.printStackTrace();
         }
     }
+    
 
     private void loadTimers() {
         File file = new File(FILE_NAME);
@@ -102,26 +104,36 @@ public class BossManager {
         }
     }
 
-    public void markBossAsKilled(String mapName, String killedTime) {
+    public void markBossAsKilled(String mapName, String killedDateTime) {
         TimerData data = mapTimers.get(mapName);
         if (data != null) {
-            // Get the current date and add 2 days
-            LocalDate currentDatePlusTwoDays = LocalDate.now(ZoneOffset.UTC).plusDays(2);
-
-            // Combine the provided killedTime with the new date
-            DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
-            LocalTime killedLocalTime = LocalTime.parse(killedTime, timeFormatter);
-            LocalDateTime newSpawnDateTime = LocalDateTime.of(currentDatePlusTwoDays, killedLocalTime);
-
-            // Set the new spawn time and notification time
+            // Try to parse the provided killedDateTime
             DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy");
-            data.setBossSpawnTime(newSpawnDateTime.format(dateTimeFormatter));
+            LocalDateTime newSpawnDateTime;
+            try {
+                newSpawnDateTime = LocalDateTime.parse(killedDateTime, dateTimeFormatter);
+            } catch (DateTimeParseException e) {
+                System.err.println("Error parsing killed time: " + killedDateTime);
+                return;
+            }
+            
+            // Set the new spawn time
+            String formattedDateTime = newSpawnDateTime.format(dateTimeFormatter);
+            data.setBossSpawnTime(formattedDateTime);
+            System.out.println("Updated spawn time for " + mapName + " to " + formattedDateTime);
+            
             // Reset the status
             data.setStatus(null);
             data.setStatusTime(null);
             saveTimers();
+        } else {
+            System.err.println("No timer data found for " + mapName);
         }
     }
+    
+    
+    
+
 
     public void markBossAsSkipped(String mapName) {
         TimerData data = mapTimers.get(mapName);

@@ -3,6 +3,7 @@ package discord.worldbosses;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent;
@@ -16,10 +17,10 @@ import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEve
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executors;
@@ -52,6 +53,14 @@ public class CommandListener extends ListenerAdapter {
         startPeriodicCheck();
         sendTimersToChannel();
     }
+    private void scheduleMessageDeletion(Message message, long delayMillis) {
+        new java.util.Timer().schedule(new java.util.TimerTask() {
+            @Override
+            public void run() {
+                message.delete().queue();
+            }
+        }, delayMillis);
+    }    
 
     private void startPeriodicCheck() {
         scheduler.scheduleAtFixedRate(() -> {
@@ -450,30 +459,39 @@ public class CommandListener extends ListenerAdapter {
     public void onMessageReceived(MessageReceivedEvent event) {
         String userId = event.getAuthor().getId();
         if ("awaiting_killed_time".equals(userStates.get(userId))) {
-            String killedTime = event.getMessage().getContentRaw();
+            String killedTimeInput = event.getMessage().getContentRaw().trim();  // Trim the input
+            System.out.println("Received killed time: " + killedTimeInput);  // Debug log
             String mapName = userStates.get(userId + "_mapName");
-
-            // Validate the time format
-            DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+    
+            // Schedule deletion of user's message after 2 hours
+            scheduleMessageDeletion(event.getMessage(), 7200000);
+    
+            // Validate the time format with explicit locale
+            DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss", Locale.US);
             try {
-                LocalTime parsedTime = LocalTime.parse(killedTime, timeFormatter);
-
+                LocalTime parsedTime = LocalTime.parse(killedTimeInput, timeFormatter);
+    
                 // Add two days to the current date
                 LocalDate twoDaysLater = LocalDate.now(ZoneOffset.UTC).plusDays(2);
                 LocalDateTime combinedDateTime = LocalDateTime.of(twoDaysLater, parsedTime);
                 String fullNewTime = combinedDateTime.format(DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"));
-
+    
                 bossManager.markBossAsKilled(mapName, fullNewTime);
                 event.getChannel().sendMessage("Boss timer for " + mapName + " has been updated to " + fullNewTime)
-                        .queue();
+                        .queue(response -> scheduleMessageDeletion(response, 7200000));
+    
+                // Clear the user's state
+                userStates.remove(userId);
+                userStates.remove(userId + "_mapName");
             } catch (DateTimeParseException e) {
-                event.getChannel().sendMessage("Invalid time format. Please use HH:mm:ss format.").queue();
+                System.out.println("Error parsing time: " + e.getMessage());  // Debug log
+                event.getChannel().sendMessage("Invalid time format. Please use HH:mm:ss format. Enter the time again.")
+                .queue(response -> scheduleMessageDeletion(response, 30000));        
+        
+                // Keep the user in the "awaiting_killed_time" state so they can try again
             }
-
-            // Clear the user's state
-            userStates.remove(userId);
-            userStates.remove(userId + "_mapName");
+            sendTimersToChannel();
         }
     }
-
+    
 }
