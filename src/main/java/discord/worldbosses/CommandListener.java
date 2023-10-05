@@ -154,7 +154,7 @@ public class CommandListener extends ListenerAdapter {
             event.reply("Failed to delete timer for " + mapName + ". It might not exist.").setEphemeral(true).queue();
         }
     }
-    // TODO: adding two days to the time needed as in other TODO
+
     private void handleAddTimer(SlashCommandInteractionEvent event) {
         String timeInput = event.getOption("time").getAsString();
         String mapName = event.getOption("map").getAsString();
@@ -172,6 +172,7 @@ public class CommandListener extends ListenerAdapter {
         String formattedTime = String.format("%02d:%02d:%02d", parsedTime.getHour(), parsedTime.getMinute(),
                 parsedTime.getSecond());
 
+        // Use the current date plus two days
         LocalDate twoDaysLater = LocalDate.now(ZoneOffset.UTC).plusDays(2);
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
         String formattedDate = twoDaysLater.format(dateFormatter);
@@ -446,7 +447,7 @@ public class CommandListener extends ListenerAdapter {
         // Delete the original boss notification
         event.getMessage().delete().queue();
     }
-    // TODO: For now after marking boss as killed it doesnt add two days to it, adding two days for the time is needed. So date + 2 days
+
     @Override
     public void onMessageReceived(MessageReceivedEvent event) {
         String userId = event.getAuthor().getId();
@@ -454,12 +455,19 @@ public class CommandListener extends ListenerAdapter {
             String killedTime = event.getMessage().getContentRaw();
             String mapName = userStates.get(userId + "_mapName");
 
-            // Validate the time format and update the boss timer
+            // Validate the time format
             DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
             try {
-                LocalTime.parse(killedTime, timeFormatter);
-                bossManager.markBossAsKilled(mapName, killedTime);
-                event.getChannel().sendMessage("Boss timer for " + mapName + " has been updated.").queue();
+                LocalTime parsedTime = LocalTime.parse(killedTime, timeFormatter);
+
+                // Add two days to the current date
+                LocalDate twoDaysLater = LocalDate.now(ZoneOffset.UTC).plusDays(2);
+                LocalDateTime combinedDateTime = LocalDateTime.of(twoDaysLater, parsedTime);
+                String fullNewTime = combinedDateTime.format(DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"));
+
+                bossManager.markBossAsKilled(mapName, fullNewTime);
+                event.getChannel().sendMessage("Boss timer for " + mapName + " has been updated to " + fullNewTime)
+                        .queue();
             } catch (DateTimeParseException e) {
                 event.getChannel().sendMessage("Invalid time format. Please use HH:mm:ss format.").queue();
             }
