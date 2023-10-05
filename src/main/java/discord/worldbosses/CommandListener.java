@@ -150,7 +150,11 @@ public class CommandListener extends ListenerAdapter {
         sendTimersToChannel();
         // Provide feedback to the user
         event.reply("Timer for " + mapName + " has been updated to " + fullNewTime)
-                .queue(response -> scheduleMessageDeletion(response.retrieveOriginal().complete(), 7200000));
+                .queue(response -> {
+                    response.retrieveOriginal().queue(originalMessage -> {
+                        scheduleMessageDeletion(originalMessage, 7200000);
+                    });
+                });
 
     }
 
@@ -203,7 +207,13 @@ public class CommandListener extends ListenerAdapter {
         bossManager.saveTimers(); // This line needs the saveTimers method to be public in BossManager
         sendTimersToChannel();
         // Provide feedback to the user
-        event.reply("Timer added for " + mapName + " at " + fullTime).queue();
+        event.reply("Timer added for " + mapName + " at " + fullTime)
+        .queue(response -> {
+            response.retrieveOriginal().queue(originalMessage -> {
+                scheduleMessageDeletion(originalMessage, 7200000);
+            });
+        });
+        ;
     }
 
     @Override
@@ -226,6 +236,8 @@ public class CommandListener extends ListenerAdapter {
 
                 bossManager.addTimer(selectedMap, fullTime);
                 selectMenu.getChannel()
+
+                //TODO: test this
                         .sendMessage("Timer added for " + selectedMap + " at " + fullTime)
                         .queue(response -> {
                             response.delete().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
@@ -313,14 +325,15 @@ public class CommandListener extends ListenerAdapter {
                 event.getMessage().delete().queue();
                 String mapNameForgot = extractMapNameFromMessage(event.getMessage().getContentRaw());
                 bossManager.markBossAsForgotten(mapNameForgot);
-                event.reply("Boss was forgotten!").queue(response -> {
-                    response.retrieveOriginal().queue(message -> {
-                        scheduleMessageDeletion(message, 7200000);
-                    });
-                });
+                event.reply("Boss was forgotten!")
+                        .queue(response -> {
+                            response.retrieveOriginal().queue(originalMessage -> {
+                                scheduleMessageDeletion(originalMessage, 7200000);
+                            });
+                        });
                 sendTimersToChannel();
                 break;
-            
+
             default:
                 break;
         }
@@ -486,7 +499,9 @@ public class CommandListener extends ListenerAdapter {
                 String fullNewTime = combinedDateTime.format(DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"));
 
                 bossManager.markBossAsKilled(mapName, fullNewTime);
-                event.getChannel().sendMessage("Boss killed!. Timer for " + mapName + " has been updated to " + fullNewTime)
+                event.getChannel()
+                        .sendMessage("Boss killed!. Timer for " + mapName + " has been updated to " + fullNewTime)
+                        // TODO: test this also
                         .queue(response -> scheduleMessageDeletion(response, 7200000));
 
                 // Clear the user's state
