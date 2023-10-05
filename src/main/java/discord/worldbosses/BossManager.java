@@ -10,10 +10,13 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.HashSet;
+import java.util.List;
 
 public class BossManager {
     private static final String FILE_NAME = "timers.json";
@@ -27,6 +30,13 @@ public class BossManager {
 
     public BossManager() {
         loadTimers();
+    }
+
+    public List<Map.Entry<String, TimerData>> getSortedTimers() {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy");
+        return mapTimers.entrySet().stream()
+                .sorted(Comparator.comparing(e -> LocalDateTime.parse(e.getValue().getBossSpawnTime(), formatter)))
+                .collect(Collectors.toList());
     }
 
     public void addTimer(String mapName, String time) {

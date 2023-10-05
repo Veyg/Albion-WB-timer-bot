@@ -312,51 +312,47 @@ public class CommandListener extends ListenerAdapter {
             System.out.println("Designated channel ID is null.");
             return; // No designated channel set
         }
-
+    
         TextChannel designatedChannel = jda.getTextChannelById(designatedChannelId);
         if (designatedChannel == null) {
             System.out.println("Designated channel not found.");
             return; // Designated channel not found
         }
-
-        Map<String, TimerData> allTimers = bossManager.getAllTimers();
-        if (allTimers.isEmpty()) {
+    
+        List<Map.Entry<String, TimerData>> sortedTimers = bossManager.getSortedTimers();
+        if (sortedTimers.isEmpty()) {
             System.out.println("No timers to send.");
             return; // No timers to send
         }
-
+    
         EmbedBuilder embed = new EmbedBuilder();
         embed.setTitle("World Boss Timers");
         embed.setColor(0x00FFFF);
-
+    
         // Create lists for upcoming, skipped/forgotten, and all timers
         List<Map.Entry<String, TimerData>> upcomingTimers = new ArrayList<>();
         List<Map.Entry<String, TimerData>> skippedForgottenTimers = new ArrayList<>();
-
-        for (Map.Entry<String, TimerData> entry : allTimers.entrySet()) {
+    
+        for (Map.Entry<String, TimerData> entry : sortedTimers) {
             TimerData timerData = entry.getValue();
-
+    
             if ("Skipped".equals(timerData.getStatus()) || "Forgotten".equals(timerData.getStatus())) {
                 // Add to skipped/forgotten section
                 skippedForgottenTimers.add(entry);
             } else {
                 LocalDateTime bossSpawnTime = LocalDateTime.parse(timerData.getBossSpawnTime(),
                         DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"));
-
+    
                 // Calculate the time difference in hours
                 long hoursUntilSpawn = Duration.between(LocalDateTime.now(ZoneOffset.UTC), bossSpawnTime).toHours();
-
+    
                 if (hoursUntilSpawn <= 12) {
                     // Add to upcoming section if within 12 hours
                     upcomingTimers.add(entry);
                 }
             }
         }
-
-        // Sort upcoming timers by spawn time
-        upcomingTimers.sort(Comparator.comparing(e -> LocalDateTime.parse(e.getValue().getBossSpawnTime(),
-                DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"))));
-
+    
         // Add "Coming up" section
         if (!upcomingTimers.isEmpty()) {
             StringBuilder comingUpBuilder = new StringBuilder();
@@ -374,19 +370,19 @@ public class CommandListener extends ListenerAdapter {
             // Insert the "Coming up" section at the beginning of the embed
             embed.addField("🚨 Coming up:", comingUpBuilder.toString(), false);
         }
-
+    
         // Add main timers section
-        for (Map.Entry<String, TimerData> entry : allTimers.entrySet()) {
+        for (Map.Entry<String, TimerData> entry : sortedTimers) {
             String bossName = entry.getKey();
             TimerData timerData = entry.getValue();
-
+    
             if (!"Skipped".equals(timerData.getStatus()) && !"Forgotten".equals(timerData.getStatus())) {
                 LocalDateTime bossSpawnTime = LocalDateTime.parse(timerData.getBossSpawnTime(),
                         DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"));
-
+    
                 // Calculate the time difference in hours
                 long hoursUntilSpawn = Duration.between(LocalDateTime.now(ZoneOffset.UTC), bossSpawnTime).toHours();
-
+    
                 if (hoursUntilSpawn > 12) {
                     // Add to main timers section
                     embed.addField(bossName,
@@ -396,7 +392,7 @@ public class CommandListener extends ListenerAdapter {
                 }
             }
         }
-
+    
         // Add "Skipped / Forgotten" section
         if (!skippedForgottenTimers.isEmpty()) {
             StringBuilder skippedForgottenBuilder = new StringBuilder();
@@ -410,7 +406,7 @@ public class CommandListener extends ListenerAdapter {
             }
             embed.addField("🕣 Skipped / Forgotten:", skippedForgottenBuilder.toString(), false);
         }
-
+    
         // Send or edit the message
         if (timerMessageId == null) {
             designatedChannel.sendMessageEmbeds(embed.build()).queue(message -> timerMessageId = message.getId());
@@ -426,6 +422,8 @@ public class CommandListener extends ListenerAdapter {
             });
         }
     }
+    
+    
 
     private String extractMapNameFromMessage(String messageContent) {
         String[] lines = messageContent.split("\n");
