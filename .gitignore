@@ -26,5 +26,6 @@ replay_pid*
 #Crucial data files - not for public consumption
 *.dat
 timers.json
+config.json
 .vscode/
 .DS_Store
