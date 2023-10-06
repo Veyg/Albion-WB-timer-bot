@@ -18,7 +18,7 @@ public class AlbionBot {
         // Retrieve the server ID dynamically from the first guild (server) that the bot is in.
         String serverId = jda.getGuilds().isEmpty() ? "defaultServerId" : jda.getGuilds().get(0).getId();
 
-        String designatedChannelId = ConfigManager.getDesignatedChannelId();
+        String designatedChannelId = ConfigManager.getDesignatedChannelId(serverId);
         CommandListener commandListener = new CommandListener(jda, designatedChannelId, serverId);
 
         // Add the command listener using the commandListener variable

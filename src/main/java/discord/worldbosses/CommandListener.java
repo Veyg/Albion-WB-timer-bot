@@ -266,11 +266,11 @@ public class CommandListener extends ListenerAdapter {
 
     private void handleSetDesignatedChannel(SlashCommandInteractionEvent event) {
         if (event.getMember().hasPermission(Permission.ADMINISTRATOR)) {
-            designatedChannelId = ((TextChannel) event.getChannel()).getId();
-
+            designatedChannelId = event.getChannel().getId();
+    
             // Save the designated channel ID to the config file
-            ConfigManager.setDesignatedChannelId(designatedChannelId);
-
+            ConfigManager.setDesignatedChannelId(event.getGuild().getId(), designatedChannelId);
+    
             event.reply("This channel is now set as the designated channel for timers.")
                     .queue(response -> {
                         response.deleteOriginal().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
@@ -292,7 +292,7 @@ public class CommandListener extends ListenerAdapter {
                     });
         }
         sendTimersToChannel();
-    }
+    }    
 
     private void sendBossNotification(String mapName, String time) {
         if (designatedChannelId == null)
