@@ -27,7 +27,6 @@ replay_pid*
 *.dat
 timers.json
 config.json
-global.json
 .vscode/
 .DS_Store
 target/
