@@ -15,16 +15,17 @@ public class AlbionBot {
         JDA jda = builder.build();
         jda.awaitReady();
 
-        // Retrieve the server ID dynamically from the first guild (server) that the bot is in.
+        // Retrieve the server ID dynamically from the first guild (server) that the bot
+        // is in.
         String serverId = jda.getGuilds().isEmpty() ? "defaultServerId" : jda.getGuilds().get(0).getId();
 
-        String designatedChannelId = ConfigManager.getDesignatedChannelId();
+        String designatedChannelId = ConfigManager.getDesignatedChannelId(serverId);
         CommandListener commandListener = new CommandListener(jda, designatedChannelId, serverId);
 
         // Add the command listener using the commandListener variable
         jda.addEventListener(commandListener);
-            
+
         /******** This is only needed when you want to register commands. ********/
-        // new SlashCommandRegistrar(jda).registerCommands(); 
+        // new SlashCommandRegistrar(jda).registerCommands();
     }
 }

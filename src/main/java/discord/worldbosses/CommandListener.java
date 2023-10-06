@@ -49,7 +49,7 @@ public class CommandListener extends ListenerAdapter {
     private String designatedChannelId;
     private ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private Set<String> sentNotifications = new HashSet<>();
-    
+
     public CommandListener(JDA jda, String designatedChannelId, String serverId) {
         this.jda = jda;
         this.designatedChannelId = designatedChannelId;
@@ -266,10 +266,10 @@ public class CommandListener extends ListenerAdapter {
 
     private void handleSetDesignatedChannel(SlashCommandInteractionEvent event) {
         if (event.getMember().hasPermission(Permission.ADMINISTRATOR)) {
-            designatedChannelId = ((TextChannel) event.getChannel()).getId();
+            designatedChannelId = event.getChannel().getId();
 
             // Save the designated channel ID to the config file
-            ConfigManager.setDesignatedChannelId(designatedChannelId);
+            ConfigManager.setDesignatedChannelId(event.getGuild().getId(), designatedChannelId);
 
             event.reply("This channel is now set as the designated channel for timers.")
                     .queue(response -> {

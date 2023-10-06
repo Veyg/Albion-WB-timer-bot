@@ -15,12 +15,10 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class BossManager {
-    // private static final String FILE_NAME = "timers.json";
     private Map<String, TimerData> mapTimers = new HashMap<>();
     private final Gson gson = new Gson();
     private Set<String> skippedAndForgottenBosses = new HashSet<>();
     private static final Logger logger = LoggerFactory.getLogger(BossManager.class);
-    
 
     public Set<String> getSkippedAndForgottenBosses() {
         return new HashSet<>(skippedAndForgottenBosses);
@@ -30,11 +28,11 @@ public class BossManager {
 
     public BossManager(String serverId) {
         this.FILE_NAME = "data/" + serverId + "/timers.json";
-        loadTimers();    
-        System.out.println("Server ID: " + serverId);  // Add this line
+        loadTimers();
+        System.out.println("Server ID: " + serverId); // Add this line
 
     }
-    
+
     public List<Map.Entry<String, TimerData>> getSortedTimers() {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy");
         return mapTimers.entrySet().stream()
@@ -72,7 +70,7 @@ public class BossManager {
 
     private void loadTimers() {
         try (InputStream is = new FileInputStream(FILE_NAME);
-             Reader reader = new InputStreamReader(is)) {
+                Reader reader = new InputStreamReader(is)) {
             Type type = new TypeToken<Map<String, TimerData>>() {
             }.getType();
             mapTimers = gson.fromJson(reader, type);
@@ -95,22 +93,21 @@ public class BossManager {
 
     public void saveTimers() {
         logger.info("Saving timers to JSON file...");
-    
+
         // Ensure the directory exists
         File directory = new File(FILE_NAME).getParentFile();
         if (!directory.exists()) {
             directory.mkdirs();
         }
-    
+
         try (OutputStream os = new FileOutputStream(FILE_NAME);
-             Writer writer = new OutputStreamWriter(os)) {
+                Writer writer = new OutputStreamWriter(os)) {
             gson.toJson(mapTimers, writer);
             logger.info("Timers saved successfully.");
         } catch (IOException e) {
             logger.error("Error saving timers to file", e);
         }
     }
-    
 
     public void markBossAsKilled(String mapName, String killedDateTime) {
         TimerData data = mapTimers.get(mapName);
