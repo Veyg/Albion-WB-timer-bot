@@ -15,14 +15,14 @@ jobs:
 
     - name: Build Docker image
       run: |
-        docker build -t Veyg/albiondiscordbot  .
+        docker build -t veyg/albiondiscordbot .
 
     - name: Login to Docker Hub
       run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
     - name: Push Docker image to Docker Hub
       run: |
-        docker push Veyg/albiondiscordbot 
+        docker push veyg/albiondiscordbot
 
     - name: SSH and Deploy to EC2
       uses: appleboy/ssh-action@master
@@ -31,5 +31,5 @@ jobs:
         username: ec2-user
         key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
         script: |
-          docker pull Veyg/albiondiscordbot 
-          docker run -d -v /ebs-data:/app/Veyg/albiondiscordbot 
+          docker pull veyg/albiondiscordbot
+          docker run -d -v /ebs-data:/app/data veyg/albiondiscordbot
