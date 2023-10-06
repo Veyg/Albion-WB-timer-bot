@@ -3,33 +3,53 @@ name: CI/CD Pipeline AWS
 on:
   push:
     branches:
-      - dev
+      - main
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-    - name: Build Docker image
-      run: |
-        docker build -t your-dockerhub-username/your-bot-image-name .
+      - name: Set up JDK 17
+        uses: actions/setup-java@v2
+        with:
+          distribution: "adopt"
+          java-version: "17"
 
-    - name: Login to Docker Hub
-      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+      - name: Build with Maven
+        run: mvn clean package
 
-    - name: Push Docker image to Docker Hub
-      run: |
-        docker push your-dockerhub-username/your-bot-image-name
+      - name: Build Docker image
+        run: |
+          docker build -t veyg/albiondiscordbot .
 
-    - name: SSH and Deploy to EC2
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ec2-user
-        key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-        script: |
-          docker pull your-dockerhub-username/your-bot-image-name
-          docker run -d -v /ebs-data:/app/data your-dockerhub-username/your-bot-image-name
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Push Docker image to Docker Hub
+        run: |
+          docker push veyg/albiondiscordbot
+
+      - name: SSH and Deploy to EC2
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          script: |
+            # Stop and remove all containers using the veyg/albiondiscordbot image
+            docker ps -a | awk '{ print $1,$2 }' | grep veyg/albiondiscordbot | awk '{print $1 }' | xargs -I {} docker stop {}
+            docker ps -a | awk '{ print $1,$2 }' | grep veyg/albiondiscordbot | awk '{print $1 }' | xargs -I {} docker rm {}
+
+            # Pull the latest image and run it
+            sudo docker pull veyg/albiondiscordbot
+            sudo docker run -d -v /ebs-data:/app/data --name albiondiscordbot veyg/albiondiscordbot
+
+            # Clean up unused (dangling) images
+            docker rmi $(docker images -f "dangling=true" -q)
