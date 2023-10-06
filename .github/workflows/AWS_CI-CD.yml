@@ -27,7 +27,10 @@ jobs:
         docker build -t veyg/albiondiscordbot .
 
     - name: Login to Docker Hub
-      run: echo "${{ secrets.DOCKER_TOKEN }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_TOKEN }}
 
     - name: Push Docker image to Docker Hub
       run: |
