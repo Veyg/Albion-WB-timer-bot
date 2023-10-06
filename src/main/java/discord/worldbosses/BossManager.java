@@ -15,20 +15,26 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class BossManager {
-    private static final String FILE_NAME = "timers.json";
+    // private static final String FILE_NAME = "timers.json";
     private Map<String, TimerData> mapTimers = new HashMap<>();
     private final Gson gson = new Gson();
     private Set<String> skippedAndForgottenBosses = new HashSet<>();
     private static final Logger logger = LoggerFactory.getLogger(BossManager.class);
+    
 
     public Set<String> getSkippedAndForgottenBosses() {
         return new HashSet<>(skippedAndForgottenBosses);
     }
 
-    public BossManager() {
-        loadTimers();
-    }
+    private String FILE_NAME;
 
+    public BossManager(String serverId) {
+        this.FILE_NAME = "data/" + serverId + "/timers.json";
+        loadTimers();    
+        System.out.println("Server ID: " + serverId);  // Add this line
+
+    }
+    
     public List<Map.Entry<String, TimerData>> getSortedTimers() {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy");
         return mapTimers.entrySet().stream()
@@ -65,7 +71,7 @@ public class BossManager {
     }
 
     private void loadTimers() {
-        try (InputStream is = getClass().getClassLoader().getResourceAsStream(FILE_NAME);
+        try (InputStream is = new FileInputStream(FILE_NAME);
              Reader reader = new InputStreamReader(is)) {
             Type type = new TypeToken<Map<String, TimerData>>() {
             }.getType();
@@ -89,8 +95,14 @@ public class BossManager {
 
     public void saveTimers() {
         logger.info("Saving timers to JSON file...");
-        try (OutputStream os = new FileOutputStream(
-                new File(getClass().getClassLoader().getResource(FILE_NAME).getFile()));
+    
+        // Ensure the directory exists
+        File directory = new File(FILE_NAME).getParentFile();
+        if (!directory.exists()) {
+            directory.mkdirs();
+        }
+    
+        try (OutputStream os = new FileOutputStream(FILE_NAME);
              Writer writer = new OutputStreamWriter(os)) {
             gson.toJson(mapTimers, writer);
             logger.info("Timers saved successfully.");
@@ -98,6 +110,7 @@ public class BossManager {
             logger.error("Error saving timers to file", e);
         }
     }
+    
 
     public void markBossAsKilled(String mapName, String killedDateTime) {
         TimerData data = mapTimers.get(mapName);
