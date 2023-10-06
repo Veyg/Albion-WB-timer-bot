@@ -43,6 +43,14 @@ jobs:
         username: ec2-user
         key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
         script: |
-          sudo docker pull veyg/albiondiscordbot:latest
-          sudo docker run -d -v /ebs-data:/app/data veyg/albiondiscordbot:latest
+          # Stop and remove the existing container if it exists
+          if [ $(docker ps -q -f name=albiondiscordbot) ]; then
+              docker stop albiondiscordbot
+              docker rm albiondiscordbot
+          fi
+        
+          # Pull the latest image and run it
+          sudo docker pull veyg/albiondiscordbot
+          sudo docker run -d -v /ebs-data:/app/data --name albiondiscordbot veyg/albiondiscordbot
+          docker rmi $(docker images -f "dangling=true" -q)
         
