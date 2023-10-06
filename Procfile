@@ -1,1 +1,1 @@
-worker: java -jar albionwbtimer-1.0.1.jar
+worker: java -jar target/albionwbtimer-1.0.1.jar
