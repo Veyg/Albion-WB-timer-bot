@@ -29,3 +29,4 @@ timers.json
 config.json
 .vscode/
 .DS_Store
+target/

@@ -2,6 +2,8 @@ package discord.worldbosses;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.lang.reflect.Type;
@@ -9,19 +11,15 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
-import java.util.HashSet;
-import java.util.List;
 
 public class BossManager {
     private static final String FILE_NAME = "timers.json";
     private Map<String, TimerData> mapTimers = new HashMap<>();
     private final Gson gson = new Gson();
     private Set<String> skippedAndForgottenBosses = new HashSet<>();
+    private static final Logger logger = LoggerFactory.getLogger(BossManager.class);
 
     public Set<String> getSkippedAndForgottenBosses() {
         return new HashSet<>(skippedAndForgottenBosses);
@@ -39,7 +37,7 @@ public class BossManager {
     }
 
     public void addTimer(String mapName, String time) {
-        System.out.println("Added timer for " + mapName + " at " + time);
+        logger.info("Added timer for {} at {}", mapName, time);
         mapTimers.put(mapName, new TimerData(time));
         skippedAndForgottenBosses.remove(mapName);
         saveTimers();
@@ -55,52 +53,49 @@ public class BossManager {
     }
 
     public void editTimer(String mapName, String newTime) {
-        System.out.println(
-                "Edited timer for " + mapName + " to " + newTime);
+        logger.info("Edited timer for {} to {}", mapName, newTime);
         mapTimers.put(mapName, new TimerData(newTime));
         saveTimers();
     }
 
     public void deleteTimer(String mapName) {
         mapTimers.remove(mapName);
-        System.out.println("Deleted timer for " + mapName);
+        logger.info("Deleted timer for {}", mapName);
         saveTimers();
     }
 
-    public void saveTimers() {
-        System.out.println("Saving timers to JSON file...");
-        try (Writer writer = new FileWriter(FILE_NAME)) {
-            gson.toJson(mapTimers, writer);
-            System.out.println("Timers saved successfully.");
-        } catch (IOException e) {
-            System.err.println("Error saving timers to file: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-    
-
     private void loadTimers() {
-        File file = new File(FILE_NAME);
-        if (file.exists()) {
-            try (Reader reader = new FileReader(file)) {
-                Type type = new TypeToken<Map<String, TimerData>>() {
-                }.getType();
-                mapTimers = gson.fromJson(reader, type);
-                if (mapTimers == null) {
-                    mapTimers = new HashMap<>();
-                } else {
-                    // Populate the skippedAndForgottenBosses set
-                    for (Map.Entry<String, TimerData> entry : mapTimers.entrySet()) {
-                        if ("Skipped".equals(entry.getValue().getStatus())
-                                || "Forgotten".equals(entry.getValue().getStatus())) {
-                            skippedAndForgottenBosses.add(entry.getKey());
-                        }
+        try (InputStream is = getClass().getClassLoader().getResourceAsStream(FILE_NAME);
+             Reader reader = new InputStreamReader(is)) {
+            Type type = new TypeToken<Map<String, TimerData>>() {
+            }.getType();
+            mapTimers = gson.fromJson(reader, type);
+            if (mapTimers == null) {
+                mapTimers = new HashMap<>();
+            } else {
+                // Populate the skippedAndForgottenBosses set
+                for (Map.Entry<String, TimerData> entry : mapTimers.entrySet()) {
+                    if ("Skipped".equals(entry.getValue().getStatus())
+                            || "Forgotten".equals(entry.getValue().getStatus())) {
+                        skippedAndForgottenBosses.add(entry.getKey());
                     }
                 }
-                System.out.println("Loaded timers: " + mapTimers);
-            } catch (IOException e) {
-                e.printStackTrace();
             }
+            logger.info("Loaded timers: {}", mapTimers);
+        } catch (IOException e) {
+            logger.error("Error loading timers", e);
+        }
+    }
+
+    public void saveTimers() {
+        logger.info("Saving timers to JSON file...");
+        try (OutputStream os = new FileOutputStream(
+                new File(getClass().getClassLoader().getResource(FILE_NAME).getFile()));
+             Writer writer = new OutputStreamWriter(os)) {
+            gson.toJson(mapTimers, writer);
+            logger.info("Timers saved successfully.");
+        } catch (IOException e) {
+            logger.error("Error saving timers to file", e);
         }
     }
 
@@ -113,27 +108,23 @@ public class BossManager {
             try {
                 newSpawnDateTime = LocalDateTime.parse(killedDateTime, dateTimeFormatter);
             } catch (DateTimeParseException e) {
-                System.err.println("Error parsing killed time: " + killedDateTime);
+                logger.error("Error parsing killed time: {}", killedDateTime, e);
                 return;
             }
-            
+
             // Set the new spawn time
             String formattedDateTime = newSpawnDateTime.format(dateTimeFormatter);
             data.setBossSpawnTime(formattedDateTime);
-            System.out.println("Updated spawn time for " + mapName + " to " + formattedDateTime);
-            
+            logger.info("Updated spawn time for {} to {}", mapName, formattedDateTime);
+
             // Reset the status
             data.setStatus(null);
             data.setStatusTime(null);
             saveTimers();
         } else {
-            System.err.println("No timer data found for " + mapName);
+            logger.error("No timer data found for {}", mapName);
         }
     }
-    
-    
-    
-
 
     public void markBossAsSkipped(String mapName) {
         TimerData data = mapTimers.get(mapName);
@@ -197,6 +188,5 @@ public class BossManager {
         public void setStatusTime(String statusTime) {
             this.statusTime = statusTime;
         }
-
     }
 }
