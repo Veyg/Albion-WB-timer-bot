@@ -46,10 +46,6 @@ If you find Albion-WB-timer-bot useful and would like to support its development
 
 - [Buy Me a Coffee](https://www.buymeacoffee.com/Veyg): Show your appreciation by buying the author a coffee.
 
-## License
-
-This project is licensed under the terms of the GNU General Public License (GPL). You can find the full text of the GPL license in the [COPYING](COPYING) file in this repository.
-
 ## Getting Started
 
 To get started with the Albion-WB-timer-bot, follow these steps:
