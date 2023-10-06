@@ -49,7 +49,6 @@ public class ConfigManager {
         }
         return null;
     }
-    
 
     public static void setBotToken(String token) {
         Config config = new Config();
