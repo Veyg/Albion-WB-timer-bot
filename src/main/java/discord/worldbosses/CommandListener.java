@@ -6,6 +6,7 @@ import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
+import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
@@ -29,6 +30,8 @@ import java.util.concurrent.TimeUnit;
 
 import discord.worldbosses.BossManager.TimerData;
 
+import java.io.File;
+import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -39,17 +42,18 @@ import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 
 public class CommandListener extends ListenerAdapter {
-    private BossManager bossManager = new BossManager();
+    private BossManager bossManager;
     private Map<String, String> userStates = new HashMap<>();
     private String timerMessageId;
     private JDA jda;
     private String designatedChannelId;
     private ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private Set<String> sentNotifications = new HashSet<>();
-
-    public CommandListener(JDA jda, String designatedChannelId) {
+    
+    public CommandListener(JDA jda, String designatedChannelId, String serverId) {
         this.jda = jda;
         this.designatedChannelId = designatedChannelId;
+        this.bossManager = new BossManager(serverId);
 
         startPeriodicCheck();
         sendTimersToChannel();
@@ -208,11 +212,11 @@ public class CommandListener extends ListenerAdapter {
         sendTimersToChannel();
         // Provide feedback to the user
         event.reply("Timer added for " + mapName + " at " + fullTime)
-        .queue(response -> {
-            response.retrieveOriginal().queue(originalMessage -> {
-                scheduleMessageDeletion(originalMessage, 7200000);
-            });
-        });
+                .queue(response -> {
+                    response.retrieveOriginal().queue(originalMessage -> {
+                        scheduleMessageDeletion(originalMessage, 7200000);
+                    });
+                });
         ;
     }
 
@@ -237,7 +241,7 @@ public class CommandListener extends ListenerAdapter {
                 bossManager.addTimer(selectedMap, fullTime);
                 selectMenu.getChannel()
 
-                //TODO: test this
+                        // TODO: test this
                         .sendMessage("Timer added for " + selectedMap + " at " + fullTime)
                         .queue(response -> {
                             response.delete().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
@@ -516,6 +520,24 @@ public class CommandListener extends ListenerAdapter {
             }
             sendTimersToChannel();
         }
+    }
+
+    @Override
+    public void onGuildJoin(GuildJoinEvent event) {
+        String serverId = event.getGuild().getId();
+
+        // Create a new timers.json file for this server
+        File serverTimersFile = new File("data/" + serverId + "/timers.json");
+        if (!serverTimersFile.exists()) {
+            serverTimersFile.getParentFile().mkdirs();
+            try {
+                serverTimersFile.createNewFile();
+                // Optionally, initialize the file with default data
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
     }
 
 }
