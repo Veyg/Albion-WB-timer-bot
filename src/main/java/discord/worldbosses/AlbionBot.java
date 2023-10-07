@@ -26,6 +26,6 @@ public class AlbionBot {
         jda.addEventListener(commandListener);
 
         /******** This is only needed when you want to register commands. ********/
-        // new SlashCommandRegistrar(jda).registerCommands();
+        new SlashCommandRegistrar(jda).registerCommands();
     }
 }
