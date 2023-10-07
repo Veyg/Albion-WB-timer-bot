@@ -10,7 +10,7 @@ public class AlbionBot {
         String token = ConfigManager.getBotToken();
         JDABuilder builder = JDABuilder.createDefault(token);
         builder.enableIntents(GatewayIntent.GUILD_MESSAGES, GatewayIntent.MESSAGE_CONTENT);
-        builder.setActivity(Activity.playing("Infactor needs regears for ZvZ"));
+        builder.setActivity(Activity.watching("World Bosses"));
 
         JDA jda = builder.build();
         jda.awaitReady();
