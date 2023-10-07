@@ -110,6 +110,7 @@ public class CommandListener extends ListenerAdapter {
                 break;
             case "aboutme":
                 handleAboutMe(event);
+                break;
             default:
                 event.reply("Unknown command.").setEphemeral(true).queue();
         }
