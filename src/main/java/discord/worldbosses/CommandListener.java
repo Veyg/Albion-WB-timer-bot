@@ -125,7 +125,7 @@ public class CommandListener extends ListenerAdapter {
         embed.setDescription("I'm AlbionBot, designed to assist you with world bosses in Albion Online! For more information visit my website.");
         embed.addField("Current Version", version, false);
         embed.addField("Website", "[AlbionBot's Website](https://worldbossbot.veyg.me)", false);
-        embed.addField("Support Me", "[Buy me a coffee](https://www.buymeacoffee.com/YourUsername)", false);
+        embed.addField("Support Me", "[Buy me a coffee](https://www.buymeacoffee.com/veyg)", false);
         embed.addField("Author", "[Veyg](https://www.veyg.me)", false);
         embed.setColor(Color.CYAN);
         embed.setThumbnail(event.getJDA().getSelfUser().getAvatarUrl());

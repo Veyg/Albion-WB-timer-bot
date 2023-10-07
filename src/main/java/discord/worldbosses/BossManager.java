@@ -29,7 +29,7 @@ public class BossManager {
     public BossManager(String serverId) {
         this.FILE_NAME = "data/" + serverId + "/timers.json";
         loadTimers();
-        System.out.println("Server ID: " + serverId); // Add this line
+        logger.info("Server ID: " + serverId); // Add this line
 
     }
 
