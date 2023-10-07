@@ -17,6 +17,7 @@ public class SlashCommandRegistrar {
         public void registerCommands() {
                 // Registering the setDesignatedChannel command
                 jda.updateCommands().addCommands(
+                                Commands.slash("aboutme", "Get information about the bot"),
                                 Commands.slash("setdesignatedchannel", "Set the designated channel for timers"),
 
                                 Commands.slash("addtimer", "Add a timer for a world boss")
@@ -148,5 +149,6 @@ public class SlashCommandRegistrar {
                                                                 "New date for the boss spawn in d/MM/yyyy format",
                                                                 true))
                                 .queue();
+                                
         }
 }

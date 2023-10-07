@@ -29,9 +29,12 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import discord.worldbosses.BossManager.TimerData;
+import java.awt.Color;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -105,9 +108,41 @@ public class CommandListener extends ListenerAdapter {
             case "edittimer":
                 handleEditTimer(event);
                 break;
+            case "aboutme":
+                handleAboutMe(event);
+                break;
             default:
                 event.reply("Unknown command.").setEphemeral(true).queue();
         }
+    }
+
+    private void handleAboutMe(SlashCommandInteractionEvent event) {
+        String version = readVersionFromFile();
+
+        EmbedBuilder embed = new EmbedBuilder();
+
+        embed.setTitle("About AlbionBot");
+        embed.setDescription("I'm AlbionBot, designed to assist you with world bosses in Albion Online! For more information visit my website.");
+        embed.addField("Current Version", version, false);
+        embed.addField("Website", "[AlbionBot's Website](https://worldbossbot.veyg.me)", false);
+        embed.addField("Support Me", "[Buy me a coffee](https://www.buymeacoffee.com/YourUsername)", false);
+        embed.addField("Author", "[Veyg](https://www.veyg.me)", false);
+        embed.setColor(Color.CYAN);
+        embed.setThumbnail(event.getJDA().getSelfUser().getAvatarUrl());
+
+        event.replyEmbeds(embed.build()).setEphemeral(true).queue();
+    }
+
+    private String readVersionFromFile() {
+        try {
+            List<String> lines = Files.readAllLines(Paths.get("VERSION"));
+            if (!lines.isEmpty()) {
+                return lines.get(0).trim();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return "Unknown Version";
     }
 
     private void handleEditTimer(SlashCommandInteractionEvent event) {
