@@ -2,8 +2,12 @@ package discord.worldbosses;
 
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Activity;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.JDA;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class AlbionBot {
     public static void main(String[] args) throws Exception {
@@ -15,15 +19,17 @@ public class AlbionBot {
         JDA jda = builder.build();
         jda.awaitReady();
 
-        // Retrieve the server ID dynamically from the first guild (server) that the bot
-        // is in.
-        String serverId = jda.getGuilds().isEmpty() ? "defaultServerId" : jda.getGuilds().get(0).getId();
+        // Initialize BossManager for each server the bot is in
+        Map<String, BossManager> bossManagers = new HashMap<>();
+        for (Guild guild : jda.getGuilds()) {
+            String serverId = guild.getId();
+            bossManagers.put(serverId, new BossManager(serverId));
 
-        String designatedChannelId = ConfigManager.getDesignatedChannelId(serverId);
-        CommandListener commandListener = new CommandListener(jda, designatedChannelId, serverId);
-
-        // Add the command listener using the commandListener variable
-        jda.addEventListener(commandListener);
+            // Set up the CommandListener for this server
+            String designatedChannelId = ConfigManager.getDesignatedChannelId(serverId);
+            CommandListener commandListener = new CommandListener(jda, designatedChannelId, serverId);
+            jda.addEventListener(commandListener);
+        }
 
         /******** This is only needed when you want to register commands. ********/
         // new SlashCommandRegistrar(jda).registerCommands();

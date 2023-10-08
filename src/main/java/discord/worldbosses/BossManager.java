@@ -20,17 +20,17 @@ public class BossManager {
     private Set<String> skippedAndForgottenBosses = new HashSet<>();
     private static final Logger logger = LoggerFactory.getLogger(BossManager.class);
 
+    private final String SERVER_DIRECTORY;
+
+
     public Set<String> getSkippedAndForgottenBosses() {
         return new HashSet<>(skippedAndForgottenBosses);
     }
 
-    private String FILE_NAME;
-
     public BossManager(String serverId) {
-        this.FILE_NAME = "data/" + serverId + "/timers.json";
+        this.SERVER_DIRECTORY = "data/" + serverId;
         loadTimers();
-        logger.info("Server ID: " + serverId); // Add this line
-
+        logger.info("Initializing BossManager with Server ID: {}", serverId);
     }
 
     public List<Map.Entry<String, TimerData>> getSortedTimers() {
@@ -42,6 +42,8 @@ public class BossManager {
 
     public void addTimer(String mapName, String time) {
         logger.info("Added timer for {} at {}", mapName, time);
+        logger.info("Adding timer for map: {} on Directory: {}", mapName, SERVER_DIRECTORY);
+
         mapTimers.put(mapName, new TimerData(time));
         skippedAndForgottenBosses.remove(mapName);
         saveTimers();
@@ -69,15 +71,24 @@ public class BossManager {
     }
 
     private void loadTimers() {
-        try (InputStream is = new FileInputStream(FILE_NAME);
-                Reader reader = new InputStreamReader(is)) {
-            Type type = new TypeToken<Map<String, TimerData>>() {
-            }.getType();
+        String filePath = SERVER_DIRECTORY + "/timers.json";
+        File file = new File(filePath);
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                logger.error("Error creating new timers file at {}", filePath, e);
+            }
+        }
+        try (InputStream is = new FileInputStream(filePath);
+             Reader reader = new InputStreamReader(is)) {
+            Type type = new TypeToken<Map<String, TimerData>>() {}.getType();
             mapTimers = gson.fromJson(reader, type);
+            logger.info("Attempting to load timers from path: {}", filePath);
+    
             if (mapTimers == null) {
                 mapTimers = new HashMap<>();
             } else {
-                // Populate the skippedAndForgottenBosses set
                 for (Map.Entry<String, TimerData> entry : mapTimers.entrySet()) {
                     if ("Skipped".equals(entry.getValue().getStatus())
                             || "Forgotten".equals(entry.getValue().getStatus())) {
@@ -85,27 +96,27 @@ public class BossManager {
                     }
                 }
             }
-            logger.info("Loaded timers: {}", mapTimers);
+            logger.info("Loaded timers from {}: {}", filePath, mapTimers);
         } catch (IOException e) {
-            logger.error("Error loading timers", e);
+            logger.error("Error loading timers from {}", filePath, e);
         }
     }
 
     public void saveTimers() {
-        logger.info("Saving timers to JSON file...");
-
-        // Ensure the directory exists
-        File directory = new File(FILE_NAME).getParentFile();
+        String filePath = SERVER_DIRECTORY + "/timers.json";
+        logger.info("Attempting to save timers to path: {}", filePath);
+    
+        File directory = new File(filePath).getParentFile();
         if (!directory.exists()) {
             directory.mkdirs();
         }
-
-        try (OutputStream os = new FileOutputStream(FILE_NAME);
-                Writer writer = new OutputStreamWriter(os)) {
+    
+        try (OutputStream os = new FileOutputStream(filePath);
+             Writer writer = new OutputStreamWriter(os)) {
             gson.toJson(mapTimers, writer);
-            logger.info("Timers saved successfully.");
+            logger.info("Timers saved successfully to {}", filePath);
         } catch (IOException e) {
-            logger.error("Error saving timers to file", e);
+            logger.error("Error saving timers to {}", filePath, e);
         }
     }
 

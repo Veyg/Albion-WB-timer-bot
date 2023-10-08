@@ -1,7 +1,9 @@
 package discord.worldbosses;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -10,12 +12,13 @@ import com.google.gson.Gson;
 
 public class ConfigManager {
     private static final Gson gson = new Gson();
+    private static final Path DATA_DIRECTORY = Paths.get("data");
 
     public static String getDesignatedChannelId(String serverId) {
         try {
             String content = readConfigFile(serverId);
             if (content != null) {
-                Config config = gson.fromJson(content, Config.class);
+                ServerConfig config = gson.fromJson(content, ServerConfig.class);
                 return config.designatedChannelId;
             }
         } catch (IOException e) {
@@ -25,7 +28,7 @@ public class ConfigManager {
     }
 
     public static void setDesignatedChannelId(String serverId, String channelId) {
-        Config config = new Config();
+        ServerConfig config = new ServerConfig();
         config.designatedChannelId = channelId;
         String json = gson.toJson(config);
         try {
@@ -37,11 +40,15 @@ public class ConfigManager {
 
     public static String getBotToken() {
         try {
-            InputStream inputStream = ConfigManager.class.getResourceAsStream("/global.json");
-            if (inputStream != null) {
-                byte[] bytes = inputStream.readAllBytes();
-                String content = new String(bytes, StandardCharsets.UTF_8);
-                Config config = gson.fromJson(content, Config.class);
+            InputStream is = AlbionBot.class.getResourceAsStream("/global.json");
+            if (is != null) {
+                BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
+                StringBuilder content = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    content.append(line);
+                }
+                GlobalConfig config = gson.fromJson(content.toString(), GlobalConfig.class);
                 return config.botToken;
             }
         } catch (IOException e) {
@@ -50,27 +57,28 @@ public class ConfigManager {
         return null;
     }
 
+
     public static void setBotToken(String token) {
-        Config config = new Config();
+        GlobalConfig config = new GlobalConfig();
         config.botToken = token;
         String json = gson.toJson(config);
         try {
-            writeConfigFile("global", json);
+            writeGlobalConfigFile(json);
         } catch (IOException e) {
             // Handle the exception
         }
     }
 
-    private static String readConfigFile(String fileName) throws IOException {
-        Path filePath = Paths.get("data", fileName, "config.json");
+    private static String readConfigFile(String serverId) throws IOException {
+        Path filePath = DATA_DIRECTORY.resolve(serverId).resolve("config.json");
         if (Files.exists(filePath)) {
             return new String(Files.readAllBytes(filePath));
         }
         return null;
     }
 
-    private static void writeConfigFile(String fileName, String json) throws IOException {
-        Path directoryPath = Paths.get("data", fileName);
+    private static void writeConfigFile(String serverId, String json) throws IOException {
+        Path directoryPath = DATA_DIRECTORY.resolve(serverId);
         if (!Files.exists(directoryPath)) {
             Files.createDirectories(directoryPath);
         }
@@ -78,8 +86,16 @@ public class ConfigManager {
         Files.write(filePath, json.getBytes());
     }
 
-    private static class Config {
+    private static void writeGlobalConfigFile(String json) throws IOException {
+        Path filePath = DATA_DIRECTORY.resolve("global.json");
+        Files.write(filePath, json.getBytes());
+    }
+
+    private static class ServerConfig {
         public String designatedChannelId;
+    }
+
+    private static class GlobalConfig {
         public String botToken;
     }
 }

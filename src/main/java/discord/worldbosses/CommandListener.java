@@ -49,17 +49,18 @@ public class CommandListener extends ListenerAdapter {
     private Map<String, String> userStates = new HashMap<>();
     private String timerMessageId;
     private JDA jda;
-    private String designatedChannelId;
     private ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private Set<String> sentNotifications = new HashSet<>();
+    private String serverId;
 
     public CommandListener(JDA jda, String designatedChannelId, String serverId) {
         this.jda = jda;
-        this.designatedChannelId = designatedChannelId;
+        this.serverId = serverId; // Store the serverId
         this.bossManager = new BossManager(serverId);
+    
 
         startPeriodicCheck();
-        sendTimersToChannel();
+        sendTimersToChannel(serverId);
     }
 
     private void scheduleMessageDeletion(Message message, long delayMillis) {
@@ -80,7 +81,7 @@ public class CommandListener extends ListenerAdapter {
                 if (ChronoUnit.MINUTES.between(now, bossSpawnTime) <= 20) {
                     // Check if the boss has been marked as skipped or forgotten
                     if (!bossManager.isSkippedOrForgotten(entry.getKey())) {
-                        sendBossNotification(entry.getKey(), entry.getValue().getBossSpawnTime());
+                        sendBossNotification(serverId, entry.getKey(), entry.getValue().getBossSpawnTime());
                     }
                 }
             }
@@ -89,9 +90,13 @@ public class CommandListener extends ListenerAdapter {
 
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
-        if (!event.getChannel().getId().equals(designatedChannelId)
-                && !event.getName().equals("setdesignatedchannel")) {
-            event.reply("Don't use it here retard 🤓").setEphemeral(true).queue();
+        if (!event.getGuild().getId().equals(this.serverId)) {
+            return; // Ignore events from other servers
+        }
+        String currentDesignatedChannelId = ConfigManager.getDesignatedChannelId(event.getGuild().getId());
+    
+        if (!event.getChannel().getId().equals(currentDesignatedChannelId) && !event.getName().equals("setdesignatedchannel")) {
+            event.reply("Don't use it here 🤓").setEphemeral(true).queue();
             return; // Ignore interactions outside the designated channel
         }
 
@@ -186,7 +191,7 @@ public class CommandListener extends ListenerAdapter {
 
         // Update the timer using BossManager
         bossManager.editTimer(mapName, fullNewTime);
-        sendTimersToChannel();
+        sendTimersToChannel(serverId);
         // Provide feedback to the user
         event.reply("Timer for " + mapName + " has been updated to " + fullNewTime)
                 .queue(response -> {
@@ -210,7 +215,7 @@ public class CommandListener extends ListenerAdapter {
         // Check if the timer exists before deleting
         if (bossManager.getAllTimers().containsKey(mapName)) {
             bossManager.deleteTimer(mapName);
-            sendTimersToChannel();
+        sendTimersToChannel(serverId);
             event.reply("Timer for " + mapName + " has been deleted.").queue();
         } else {
             event.reply("Failed to delete timer for " + mapName + ". It might not exist.").setEphemeral(true).queue();
@@ -244,7 +249,7 @@ public class CommandListener extends ListenerAdapter {
         // Store the timer using BossManager
         bossManager.addTimer(mapName, fullTime);
         bossManager.saveTimers(); // This line needs the saveTimers method to be public in BossManager
-        sendTimersToChannel();
+        sendTimersToChannel(serverId);
         // Provide feedback to the user
         event.reply("Timer added for " + mapName + " at " + fullTime)
                 .queue(response -> {
@@ -257,7 +262,11 @@ public class CommandListener extends ListenerAdapter {
 
     @Override
     public void onGenericInteractionCreate(GenericInteractionCreateEvent event) {
-        if (!event.getChannel().getId().equals(designatedChannelId)) {
+        if (!event.getGuild().getId().equals(this.serverId)) {
+            return; // Ignore events from other servers
+        }
+        String currentDesignatedChannelId = ConfigManager.getDesignatedChannelId(event.getGuild().getId());
+        if (!event.getChannel().getId().equals(currentDesignatedChannelId)) {
             return; // Ignore interactions outside the designated channel
         }
         this.jda = event.getJDA();
@@ -291,7 +300,7 @@ public class CommandListener extends ListenerAdapter {
                 userStates.remove(userId + "_input_date");
                 selectMenu.getMessage().delete().queue();
 
-                sendTimersToChannel();
+                sendTimersToChannel(serverId);
             } else if (customId.equals("map-selector") && "awaiting_map_selection".equals(userStates.get(userId))) {
                 // This is for other functionalities that might require map selection without
                 // adding a timer
@@ -301,11 +310,11 @@ public class CommandListener extends ListenerAdapter {
 
     private void handleSetDesignatedChannel(SlashCommandInteractionEvent event) {
         if (event.getMember().hasPermission(Permission.ADMINISTRATOR)) {
-            designatedChannelId = event.getChannel().getId();
-
+            String currentDesignatedChannelId = event.getChannel().getId();
+    
             // Save the designated channel ID to the config file
-            ConfigManager.setDesignatedChannelId(event.getGuild().getId(), designatedChannelId);
-
+            ConfigManager.setDesignatedChannelId(event.getGuild().getId(), currentDesignatedChannelId);
+    
             event.reply("This channel is now set as the designated channel for timers.")
                     .queue(response -> {
                         response.deleteOriginal().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
@@ -326,13 +335,15 @@ public class CommandListener extends ListenerAdapter {
                         });
                     });
         }
-        sendTimersToChannel();
+        sendTimersToChannel(serverId);
     }
+    
 
-    private void sendBossNotification(String mapName, String time) {
-        if (designatedChannelId == null)
+    public void sendBossNotification(String guildId, String mapName, String time) {
+        String currentDesignatedChannelId = ConfigManager.getDesignatedChannelId(guildId);
+        if (currentDesignatedChannelId == null)
             return;
-        TextChannel designatedChannel = jda.getTextChannelById(designatedChannelId);
+        TextChannel designatedChannel = jda.getTextChannelById(currentDesignatedChannelId);
         if (designatedChannel == null)
             return;
 
@@ -358,7 +369,7 @@ public class CommandListener extends ListenerAdapter {
                 event.getMessage().delete().queue();
                 String mapNameSkipped = extractMapNameFromMessage(event.getMessage().getContentRaw());
                 bossManager.markBossAsSkipped(mapNameSkipped);
-                sendTimersToChannel();
+        sendTimersToChannel(serverId);
                 break;
             case "boss_forgot":
                 event.getMessage().delete().queue();
@@ -370,7 +381,7 @@ public class CommandListener extends ListenerAdapter {
                                 scheduleMessageDeletion(originalMessage, 7200000);
                             });
                         });
-                sendTimersToChannel();
+        sendTimersToChannel(serverId);
                 break;
 
             default:
@@ -378,19 +389,22 @@ public class CommandListener extends ListenerAdapter {
         }
     }
 
-    void sendTimersToChannel() {
+    void sendTimersToChannel(String guildId) {
         System.out.println("Sending timers to channel");
-        if (designatedChannelId == null) {
+    
+        // Fetch the designatedChannelId dynamically
+        String currentDesignatedChannelId = ConfigManager.getDesignatedChannelId(guildId);
+        if (currentDesignatedChannelId == null) {
             System.out.println("Designated channel ID is null.");
             return; // No designated channel set
         }
-
-        TextChannel designatedChannel = jda.getTextChannelById(designatedChannelId);
+    
+        TextChannel designatedChannel = jda.getTextChannelById(currentDesignatedChannelId);
         if (designatedChannel == null) {
             System.out.println("Designated channel not found.");
             return; // Designated channel not found
         }
-
+    
         List<Map.Entry<String, TimerData>> sortedTimers = bossManager.getSortedTimers();
         if (sortedTimers.isEmpty()) {
             System.out.println("No timers to send.");
@@ -518,6 +532,9 @@ public class CommandListener extends ListenerAdapter {
 
     @Override
     public void onMessageReceived(MessageReceivedEvent event) {
+        if (!event.getGuild().getId().equals(this.serverId)) {
+            return; // Ignore events from other servers
+        }
         String userId = event.getAuthor().getId();
         if ("awaiting_killed_time".equals(userStates.get(userId))) {
             String killedTimeInput = event.getMessage().getContentRaw().trim(); // Trim the input
@@ -553,7 +570,7 @@ public class CommandListener extends ListenerAdapter {
 
                 // Keep the user in the "awaiting_killed_time" state so they can try again
             }
-            sendTimersToChannel();
+        sendTimersToChannel(serverId);
         }
     }
 
