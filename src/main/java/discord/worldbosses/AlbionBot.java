@@ -42,6 +42,7 @@ public class AlbionBot extends ListenerAdapter {
         /******** This is only needed when you want to register commands. ********/
         // new SlashCommandRegistrar(jda).registerCommands();
     }
+
     @Override
     public void onGuildJoin(GuildJoinEvent event) {
         String serverId = event.getGuild().getId();
@@ -73,17 +74,19 @@ public class AlbionBot extends ListenerAdapter {
         }
 
         // Get the user who invited the bot
-        String inviterId = event.getGuild().retrieveAuditLogs().type(ActionType.BOT_ADD).complete().get(0).getUser().getId();
+        String inviterId = event.getGuild().retrieveAuditLogs().type(ActionType.BOT_ADD).complete().get(0).getUser()
+                .getId();
 
         // Get the private channel with the inviter
         event.getJDA().retrieveUserById(inviterId).queue(inviter -> {
             inviter.openPrivateChannel().queue(privateChannel -> {
                 // Send the private message
-                privateChannel.sendMessage("Thank you for inviting me to your server! Here's some information about me:\n" +
-                        "Website: https://www.veyg.me\n" +
-                        "Support Server: https://www.buymeacoffee.com/Veyg\n" +
-                        "Documentation: https://worldbossbot.veyg.me\n" +
-                        "Feel free to reach out if you have any questions or need assistance. Enjoy using the bot!")
+                privateChannel
+                        .sendMessage("Thank you for inviting me to your server! Here's some information about me:\n" +
+                                "Website: https://www.veyg.me\n" +
+                                "Support Server: https://www.buymeacoffee.com/Veyg\n" +
+                                "Documentation: https://worldbossbot.veyg.me\n" +
+                                "Feel free to reach out if you have any questions or need assistance. Enjoy using the bot!")
                         .queue(
                                 // Success callback
                                 success -> {
@@ -94,8 +97,7 @@ public class AlbionBot extends ListenerAdapter {
                                 error -> {
                                     // Handle failure (e.g., log an error message)
                                     error.printStackTrace();
-                                }
-                        );
+                                });
             });
         });
 

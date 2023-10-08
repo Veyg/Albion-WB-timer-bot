@@ -55,7 +55,7 @@ public class CommandListener extends ListenerAdapter {
         this.jda = jda;
         this.serverId = serverId; // Store the serverId
         this.bossManager = new BossManager(serverId);
-    
+
         startPeriodicCheck();
     }
 
@@ -90,8 +90,9 @@ public class CommandListener extends ListenerAdapter {
             return; // Ignore events from other servers
         }
         String currentDesignatedChannelId = ConfigManager.getDesignatedChannelId(event.getGuild().getId());
-    
-        if (!event.getChannel().getId().equals(currentDesignatedChannelId) && !event.getName().equals("setdesignatedchannel")) {
+
+        if (!event.getChannel().getId().equals(currentDesignatedChannelId)
+                && !event.getName().equals("setdesignatedchannel")) {
             event.reply("Don't use it here 🤓").setEphemeral(true).queue();
             return; // Ignore interactions outside the designated channel
         }
@@ -123,7 +124,8 @@ public class CommandListener extends ListenerAdapter {
         EmbedBuilder embed = new EmbedBuilder();
 
         embed.setTitle("About AlbionBot");
-        embed.setDescription("I'm AlbionBot, designed to assist you with world bosses in Albion Online! For more information visit my website.");
+        embed.setDescription(
+                "I'm AlbionBot, designed to assist you with world bosses in Albion Online! For more information visit my website.");
         embed.addField("Current Version", version, false);
         embed.addField("Website", "[AlbionBot's Website](https://worldbossbot.veyg.me)", false);
         embed.addField("Support Me", "[Buy me a coffee](https://www.buymeacoffee.com/veyg)", false);
@@ -211,7 +213,7 @@ public class CommandListener extends ListenerAdapter {
         // Check if the timer exists before deleting
         if (bossManager.getAllTimers().containsKey(mapName)) {
             bossManager.deleteTimer(mapName);
-        sendTimersToChannel(serverId);
+            sendTimersToChannel(serverId);
             event.reply("Timer for " + mapName + " has been deleted.").queue();
         } else {
             event.reply("Failed to delete timer for " + mapName + ". It might not exist.").setEphemeral(true).queue();
@@ -307,10 +309,10 @@ public class CommandListener extends ListenerAdapter {
     private void handleSetDesignatedChannel(SlashCommandInteractionEvent event) {
         if (event.getMember().hasPermission(Permission.ADMINISTRATOR)) {
             String currentDesignatedChannelId = event.getChannel().getId();
-    
+
             // Save the designated channel ID to the config file
             ConfigManager.setDesignatedChannelId(event.getGuild().getId(), currentDesignatedChannelId);
-    
+
             event.reply("This channel is now set as the designated channel for timers.")
                     .queue(response -> {
                         response.deleteOriginal().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
@@ -333,7 +335,6 @@ public class CommandListener extends ListenerAdapter {
         }
         sendTimersToChannel(serverId);
     }
-    
 
     public void sendBossNotification(String guildId, String mapName, String time) {
         String currentDesignatedChannelId = ConfigManager.getDesignatedChannelId(guildId);
@@ -365,7 +366,7 @@ public class CommandListener extends ListenerAdapter {
                 event.getMessage().delete().queue();
                 String mapNameSkipped = extractMapNameFromMessage(event.getMessage().getContentRaw());
                 bossManager.markBossAsSkipped(mapNameSkipped);
-        sendTimersToChannel(serverId);
+                sendTimersToChannel(serverId);
                 break;
             case "boss_forgot":
                 event.getMessage().delete().queue();
@@ -377,7 +378,7 @@ public class CommandListener extends ListenerAdapter {
                                 scheduleMessageDeletion(originalMessage, 7200000);
                             });
                         });
-        sendTimersToChannel(serverId);
+                sendTimersToChannel(serverId);
                 break;
 
             default:
@@ -387,20 +388,20 @@ public class CommandListener extends ListenerAdapter {
 
     void sendTimersToChannel(String guildId) {
         System.out.println("Sending timers to channel");
-    
+
         // Fetch the designatedChannelId dynamically
         String currentDesignatedChannelId = ConfigManager.getDesignatedChannelId(guildId);
         if (currentDesignatedChannelId == null) {
             System.out.println("Designated channel ID is null.");
             return; // No designated channel set
         }
-    
+
         TextChannel designatedChannel = jda.getTextChannelById(currentDesignatedChannelId);
         if (designatedChannel == null) {
             System.out.println("Designated channel not found.");
             return; // Designated channel not found
         }
-    
+
         List<Map.Entry<String, TimerData>> sortedTimers = bossManager.getSortedTimers();
         if (sortedTimers.isEmpty()) {
             System.out.println("No timers to send.");
@@ -531,7 +532,6 @@ public class CommandListener extends ListenerAdapter {
         if (!event.isFromGuild()) {
             return; // Ignore messages from DMs
         }
-    
         if (!event.getGuild().getId().equals(this.serverId)) {
             return; // Ignore events from other servers
         }
@@ -570,9 +570,8 @@ public class CommandListener extends ListenerAdapter {
 
                 // Keep the user in the "awaiting_killed_time" state so they can try again
             }
-        sendTimersToChannel(serverId);
+            sendTimersToChannel(serverId);
         }
     }
-
 
 }

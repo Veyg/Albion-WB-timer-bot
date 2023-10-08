@@ -149,6 +149,6 @@ public class SlashCommandRegistrar {
                                                                 "New date for the boss spawn in d/MM/yyyy format",
                                                                 true))
                                 .queue();
-                                
+
         }
 }

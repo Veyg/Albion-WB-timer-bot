@@ -28,7 +28,6 @@ public class ConfigManager {
         }
         return null;
     }
-    
 
     public static void setDesignatedChannelId(String serverId, String channelId) {
         ServerConfig config = new ServerConfig();
@@ -61,8 +60,6 @@ public class ConfigManager {
         }
         return null;
     }
-    
-
 
     public static void setBotToken(String token) {
         GlobalConfig config = new GlobalConfig();

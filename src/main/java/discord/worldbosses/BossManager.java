@@ -22,7 +22,6 @@ public class BossManager {
 
     private final String SERVER_DIRECTORY;
 
-
     public Set<String> getSkippedAndForgottenBosses() {
         return new HashSet<>(skippedAndForgottenBosses);
     }
@@ -81,11 +80,12 @@ public class BossManager {
             }
         }
         try (InputStream is = new FileInputStream(filePath);
-             Reader reader = new InputStreamReader(is)) {
-            Type type = new TypeToken<Map<String, TimerData>>() {}.getType();
+                Reader reader = new InputStreamReader(is)) {
+            Type type = new TypeToken<Map<String, TimerData>>() {
+            }.getType();
             mapTimers = gson.fromJson(reader, type);
             logger.info("Attempting to load timers from path: {}", filePath);
-    
+
             if (mapTimers == null) {
                 mapTimers = new HashMap<>();
             } else {
@@ -105,14 +105,14 @@ public class BossManager {
     public void saveTimers() {
         String filePath = SERVER_DIRECTORY + "/timers.json";
         logger.info("Attempting to save timers to path: {}", filePath);
-    
+
         File directory = new File(filePath).getParentFile();
         if (!directory.exists()) {
             directory.mkdirs();
         }
-    
+
         try (OutputStream os = new FileOutputStream(filePath);
-             Writer writer = new OutputStreamWriter(os)) {
+                Writer writer = new OutputStreamWriter(os)) {
             gson.toJson(mapTimers, writer);
             logger.info("Timers saved successfully to {}", filePath);
         } catch (IOException e) {
