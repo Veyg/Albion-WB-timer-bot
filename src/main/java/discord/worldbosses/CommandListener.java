@@ -528,6 +528,10 @@ public class CommandListener extends ListenerAdapter {
 
     @Override
     public void onMessageReceived(MessageReceivedEvent event) {
+        if (!event.isFromGuild()) {
+            return; // Ignore messages from DMs
+        }
+    
         if (!event.getGuild().getId().equals(this.serverId)) {
             return; // Ignore events from other servers
         }
