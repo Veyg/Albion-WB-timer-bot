@@ -49,7 +49,7 @@ public class AlbionBot extends ListenerAdapter {
     public void onGuildJoin(GuildJoinEvent event) {
         String serverId = event.getGuild().getId();
         String serverDataDir = "data/" + serverId + "/";
-
+    
         // Create a new timers.json file for this server if it doesn't exist
         File serverTimersFile = new File(serverDataDir + "timers.json");
         if (!serverTimersFile.exists()) {
@@ -62,7 +62,7 @@ public class AlbionBot extends ListenerAdapter {
                 e.printStackTrace();
             }
         }
-
+    
         // Create a new config.json file for this server if it doesn't exist
         File serverConfigFile = new File(serverDataDir + "config.json");
         if (!serverConfigFile.exists()) {
@@ -74,15 +74,15 @@ public class AlbionBot extends ListenerAdapter {
                 e.printStackTrace();
             }
         }
-
+    
         // Retrieve invites for the guild
         List<Invite> invites = event.getGuild().retrieveInvites().complete();
-
+    
         // Check if there are any invites
         if (!invites.isEmpty()) {
             // Get the user who invited the bot to the server
             User inviter = invites.get(0).getInviter();
-
+    
             // Check if the inviter is not null (for safety)
             if (inviter != null) {
                 // Send a private message to the inviter
@@ -107,11 +107,12 @@ public class AlbionBot extends ListenerAdapter {
                 });
             }
         }
-
+    
         // When the bot joins a new server, initialize BossManager and CommandListener
         // Set up the CommandListener for this server
         String designatedChannelId = ConfigManager.getDesignatedChannelId(serverId);
         CommandListener commandListener = new CommandListener(event.getJDA(), designatedChannelId, serverId);
         event.getJDA().addEventListener(commandListener);
     }
+    
 }
