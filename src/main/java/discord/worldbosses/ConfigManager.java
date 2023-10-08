@@ -19,13 +19,16 @@ public class ConfigManager {
             String content = readConfigFile(serverId);
             if (content != null) {
                 ServerConfig config = gson.fromJson(content, ServerConfig.class);
-                return config.designatedChannelId;
+                if (config != null) {
+                    return config.designatedChannelId;
+                }
             }
         } catch (IOException e) {
-            // Handle the exception
+            e.printStackTrace(); // Handle or log the exception
         }
         return null;
     }
+    
 
     public static void setDesignatedChannelId(String serverId, String channelId) {
         ServerConfig config = new ServerConfig();
@@ -34,28 +37,31 @@ public class ConfigManager {
         try {
             writeConfigFile(serverId, json);
         } catch (IOException e) {
-            // Handle the exception
+            e.printStackTrace(); // Handle or log the exception
         }
     }
 
     public static String getBotToken() {
-        try {
-            InputStream is = AlbionBot.class.getResourceAsStream("/global.json");
+        try (InputStream is = AlbionBot.class.getResourceAsStream("/global.json")) {
             if (is != null) {
-                BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
-                StringBuilder content = new StringBuilder();
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    content.append(line);
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+                    StringBuilder content = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        content.append(line);
+                    }
+                    GlobalConfig config = gson.fromJson(content.toString(), GlobalConfig.class);
+                    String token = config.botToken;
+                    System.out.println("Bot Token: " + token); // Add this line for debugging
+                    return token;
                 }
-                GlobalConfig config = gson.fromJson(content.toString(), GlobalConfig.class);
-                return config.botToken;
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            e.printStackTrace(); // Handle or log the exception
         }
         return null;
     }
+    
 
 
     public static void setBotToken(String token) {
@@ -65,7 +71,7 @@ public class ConfigManager {
         try {
             writeGlobalConfigFile(json);
         } catch (IOException e) {
-            // Handle the exception
+            e.printStackTrace(); // Handle or log the exception
         }
     }
 

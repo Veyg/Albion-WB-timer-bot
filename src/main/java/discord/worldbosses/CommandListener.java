@@ -6,7 +6,6 @@ import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
-import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
@@ -31,7 +30,6 @@ import java.util.concurrent.TimeUnit;
 import discord.worldbosses.BossManager.TimerData;
 import java.awt.Color;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -58,7 +56,6 @@ public class CommandListener extends ListenerAdapter {
         this.serverId = serverId; // Store the serverId
         this.bossManager = new BossManager(serverId);
     
-
         startPeriodicCheck();
         sendTimersToChannel(serverId);
     }
@@ -574,22 +571,5 @@ public class CommandListener extends ListenerAdapter {
         }
     }
 
-    @Override
-    public void onGuildJoin(GuildJoinEvent event) {
-        String serverId = event.getGuild().getId();
-
-        // Create a new timers.json file for this server
-        File serverTimersFile = new File("data/" + serverId + "/timers.json");
-        if (!serverTimersFile.exists()) {
-            serverTimersFile.getParentFile().mkdirs();
-            try {
-                serverTimersFile.createNewFile();
-                // Optionally, initialize the file with default data
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
-    }
 
 }
