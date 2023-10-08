@@ -57,7 +57,6 @@ public class CommandListener extends ListenerAdapter {
         this.bossManager = new BossManager(serverId);
     
         startPeriodicCheck();
-        sendTimersToChannel(serverId);
     }
 
     private void scheduleMessageDeletion(Message message, long delayMillis) {
