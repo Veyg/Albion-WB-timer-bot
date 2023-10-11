@@ -18,11 +18,11 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
+// import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
+// import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -48,8 +48,9 @@ public class CommandListener extends ListenerAdapter {
     private String timerMessageId;
     private JDA jda;
     private ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-    private Set<String> sentNotifications = new HashSet<>();
+    // private Set<String> sentNotifications = new HashSet<>();
     private String serverId;
+    private Map<String, List<String>> bossNotificationMessages = new HashMap<>();
 
     public CommandListener(JDA jda, String designatedChannelId, String serverId) {
         this.jda = jda;
@@ -349,12 +350,14 @@ public class CommandListener extends ListenerAdapter {
         Button forgotButton = Button.danger("boss_forgot", "Forgot").withEmoji(Emoji.fromUnicode("❓"));
 
         designatedChannel.sendMessage("@everyone\n**WORLD BOSS SPAWNING SOON**\nMap: " + mapName + "\nTime: " + time)
-                .setActionRow(killedButton, skippedButton, forgotButton)
-                .queue();
-
+            .setActionRow(killedButton, skippedButton, forgotButton)
+            .queue(message -> {
+            // Store the message ID for this boss
+            bossNotificationMessages.computeIfAbsent(mapName, k -> new ArrayList<>()).add(message.getId());
+            });
         // After sending the notification, add it to the set of sent notifications
-        String currentDate = LocalDate.now(ZoneOffset.UTC).toString();
-        sentNotifications.add(mapName + "_" + time + "_" + currentDate);
+        // String currentDate = LocalDate.now(ZoneOffset.UTC).toString();
+        // sentNotifications.add(mapName + "_" + time + "_" + currentDate);
     }
 
     public void onButtonInteraction(ButtonInteraction event) {
@@ -522,7 +525,7 @@ public class CommandListener extends ListenerAdapter {
         userStates.put(event.getUser().getId(), "awaiting_killed_time");
         userStates.put(event.getUser().getId() + "_mapName", mapName);
         event.reply("Enter the time the boss was killed in HH:mm:ss format.").setEphemeral(true).queue();
-
+        deleteAllNotificationsForBoss(mapName);
         // Delete the original boss notification
         event.getMessage().delete().queue();
     }
@@ -573,5 +576,23 @@ public class CommandListener extends ListenerAdapter {
             sendTimersToChannel(serverId);
         }
     }
+    private void deleteAllNotificationsForBoss(String mapName) {
+        TextChannel designatedChannel = jda.getTextChannelById(ConfigManager.getDesignatedChannelId(serverId));
+        if (designatedChannel == null) return;
+    
+        List<String> messageIds = bossNotificationMessages.get(mapName);
+        if (messageIds != null) {
+            for (String messageId : messageIds) {
+                designatedChannel.deleteMessageById(messageId).queue(null, throwable -> {
+                    if (throwable instanceof ErrorResponseException) {
+                        System.out.println("Error deleting message with ID: " + messageId + ". Error: " + throwable.getMessage());
+                    }
+                });
+            }
+            // Clear the message IDs for this boss
+            bossNotificationMessages.remove(mapName);
+        }
+    }
+    
 
 }

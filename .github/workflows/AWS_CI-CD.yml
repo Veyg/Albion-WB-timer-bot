@@ -42,6 +42,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          envs: BOT_TOKEN
           script: |
             # Stop and remove all containers using the veyg/albiondiscordbot image
             docker ps -a | awk '{ print $1,$2 }' | grep veyg/albiondiscordbot | awk '{print $1 }' | xargs -I {} docker stop {}
@@ -49,7 +50,7 @@ jobs:
 
             # Pull the latest image and run it
             sudo docker pull veyg/albiondiscordbot
-            sudo docker run -d -v /ebs-data:/app/data --name albiondiscordbot veyg/albiondiscordbot
+            sudo docker run -d -v /ebs-data:/app/data -e BOT_TOKEN=$BOT_TOKEN --name albiondiscordbot veyg/albiondiscordbot
 
             # Clean up unused (dangling) images
             docker rmi $(docker images -f "dangling=true" -q)
