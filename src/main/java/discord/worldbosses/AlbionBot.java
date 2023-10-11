@@ -82,10 +82,11 @@ public class AlbionBot extends ListenerAdapter {
             inviter.openPrivateChannel().queue(privateChannel -> {
                 // Send the private message
                 privateChannel
-                        .sendMessage("Thank you for inviting me to your server! Here's some information about me:\n" +
-                                "Website: https://www.veyg.me\n" +
-                                "Support Server: https://www.buymeacoffee.com/Veyg\n" +
-                                "Documentation: hhttps://veyg.me/worldbossbot/\n" +
+                        .sendMessage("Thank you for inviting me to your server! Here's some important links:\n" +
+                                "Support the server: https://www.buymeacoffee.com/Veyg\n" +
+                                "Documentation: https://veyg.me/worldbossbot/\n" +
+                                "Discord for support: https://discord.gg/QqRC8vnaeZ\n" +
+                                "GitHub repo: https://github.com/Veyg/Albion-WB-timer-bot" +
                                 "Feel free to reach out if you have any questions or need assistance. Enjoy using the bot!")
                         .queue(
                                 // Success callback
