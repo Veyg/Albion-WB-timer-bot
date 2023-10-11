@@ -1,10 +1,10 @@
 # Albion-WB-timer-bot
 
-**Author:** Veyg
-
 **License:** GNU General Public License (GPL)
 
 ---
+[![Support Server](https://img.shields.io/badge/Join-Support%20Server-blue)](https://discord.gg/QqRC8vnaeZ)
+[![Invite Bot](https://img.shields.io/badge/Invite-Bot%20to%20Server-green)](https://discord.com/api/oauth2/authorize?client_id=1145671676902785084&permissions=566935907456&scope=bot)
 
 ## Introduction
 
