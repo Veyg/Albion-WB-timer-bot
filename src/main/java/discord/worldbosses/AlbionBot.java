@@ -85,7 +85,7 @@ public class AlbionBot extends ListenerAdapter {
                         .sendMessage("Thank you for inviting me to your server! Here's some information about me:\n" +
                                 "Website: https://www.veyg.me\n" +
                                 "Support Server: https://www.buymeacoffee.com/Veyg\n" +
-                                "Documentation: https://worldbossbot.veyg.me\n" +
+                                "Documentation: hhttps://veyg.me/worldbossbot/\n" +
                                 "Feel free to reach out if you have any questions or need assistance. Enjoy using the bot!")
                         .queue(
                                 // Success callback
