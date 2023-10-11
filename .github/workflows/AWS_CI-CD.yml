@@ -8,6 +8,8 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    env:
+      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}  # Setting the environment variable for the entire job
 
     steps:
       - name: Checkout code
@@ -23,8 +25,7 @@ jobs:
         run: mvn clean package
 
       - name: Build Docker image
-        run: |
-          docker build -t veyg/albiondiscordbot .
+        run: docker build -t veyg/albiondiscordbot .
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -33,8 +34,7 @@ jobs:
           password: ${{ secrets.DOCKER_TOKEN }}
 
       - name: Push Docker image to Docker Hub
-        run: |
-          docker push veyg/albiondiscordbot
+        run: docker push veyg/albiondiscordbot
 
       - name: SSH and Deploy to EC2
         uses: appleboy/ssh-action@master
@@ -42,7 +42,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-          envs: BOT_TOKEN
+          envs: BOT_TOKEN  # Passing the environment variable to the SSH session
           script: |
             # Stop and remove all containers using the veyg/albiondiscordbot image
             docker ps -a | awk '{ print $1,$2 }' | grep veyg/albiondiscordbot | awk '{print $1 }' | xargs -I {} docker stop {}

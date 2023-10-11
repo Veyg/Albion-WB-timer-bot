@@ -37,8 +37,11 @@ public class ConfigManager {
     }
 
     public static String getBotToken() {
-        return System.getenv("BOT_TOKEN");
+        String token = System.getenv("BOT_TOKEN");
+        System.out.println("Token fetched: " + (token != null && !token.isEmpty()));
+        return token;
     }
+    
     
     private static String readConfigFile(String serverId) throws IOException {
         Path filePath = DATA_DIRECTORY.resolve(serverId).resolve("config.json");
