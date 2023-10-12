@@ -91,17 +91,25 @@ public class CommandListener extends ListenerAdapter {
             return; // Ignore events from other servers
         }
         String currentDesignatedChannelId = ConfigManager.getDesignatedChannelId(event.getGuild().getId());
-
-        if (!event.getChannel().getId().equals(currentDesignatedChannelId)
-                && !event.getName().equals("setdesignatedchannel")) {
+    
+        // Check if the command is setdesignatedchannel and if the user is an admin
+        if (event.getName().equals("setdesignatedchannel")) {
+            if (event.getMember().hasPermission(Permission.ADMINISTRATOR)) {
+                handleSetDesignatedChannel(event);
+            } else {
+                event.reply("You need administrator permissions to set the designated channel.")
+                     .setEphemeral(true).queue();
+            }
+            return;
+        }
+    
+        // For all other commands, check if they are used in the designated channel
+        if (!event.getChannel().getId().equals(currentDesignatedChannelId)) {
             event.reply("Don't use it here 🤓").setEphemeral(true).queue();
             return; // Ignore interactions outside the designated channel
         }
-
+    
         switch (event.getName()) {
-            case "setdesignatedchannel":
-                handleSetDesignatedChannel(event);
-                break;
             case "addtimer":
                 handleAddTimer(event);
                 break;
@@ -117,7 +125,7 @@ public class CommandListener extends ListenerAdapter {
             default:
                 event.reply("Unknown command.").setEphemeral(true).queue();
         }
-    }
+    }    
 
     private void handleAboutMe(SlashCommandInteractionEvent event) {
         String version = readVersionFromFile();
