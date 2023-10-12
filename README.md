@@ -52,7 +52,7 @@ If you find Albion-WB-timer-bot useful and would like to support its development
 
 To get started with the Albion-WB-timer-bot, follow these steps:
 
-1. **Invite the Bot**: [Invite the bot to your Discord server](https://discord.com/api/oauth2/authorize?client_id=1145671676902785084&permissions=566935907456&scope=bot).
+1. **Invite the Bot**: [Invite the bot to your Discord server](https://discord.com/api/oauth2/authorize?client_id=1145671676902785084&permissions=566935907456&scope=bot%20applications.commands).
 
 2. **Set Up Designated Channels**: Use the `/setdesignatedchannel` command to specify the channels where the bot will send timer notifications.
 
