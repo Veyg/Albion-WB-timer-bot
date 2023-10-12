@@ -23,19 +23,20 @@ Albion-WB-timer-bot is a Discord bot designed to help Albion Online players mana
 To use the Albion-WB-timer-bot, you can invite it to your Discord server and interact with it through Discord commands.
 
 ### Available Commands
+1. `/help`: Display a list of available commands.
 
-1. `/setdesignatedchannel`: Set the designated channel for timers.
+2. `/setdesignatedchannel`: Set the designated channel for timers.
 
-2. `/addtimer`: Add a timer for a world boss.
+3. `/addtimer`: Add a timer for a world boss.
    - Options:
      - `time`: Time for the boss spawn in HH:mm:ss format (required).
      - `map`: Name of the map where the boss spawns (required).
 
-3. `/deletetimer`: Delete a timer for a world boss.
+4. `/deletetimer`: Delete a timer for a world boss.
    - Options:
      - `map`: Name of the map where the boss spawns (required).
 
-4. `/edittimer`: Edit a timer for a world boss.
+5. `/edittimer`: Edit a timer for a world boss.
    - Options:
      - `map`: Name of the map where the boss spawns (required).
      - `newtime`: New time for the boss spawn in HH:mm:ss format (required).

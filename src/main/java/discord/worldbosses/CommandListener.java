@@ -103,6 +103,17 @@ public class CommandListener extends ListenerAdapter {
             return;
         }
     
+        // Allow /aboutme and /help to be accessible even outside the designated channel
+        if (event.getName().equals("aboutme")) {
+            handleAboutMe(event);
+            return;
+        }
+    
+        if (event.getName().equals("help")) {
+            handleHelp(event);
+            return;
+        }
+    
         // For all other commands, check if they are used in the designated channel
         if (!event.getChannel().getId().equals(currentDesignatedChannelId)) {
             event.reply("Don't use it here 🤓").setEphemeral(true).queue();
@@ -119,13 +130,10 @@ public class CommandListener extends ListenerAdapter {
             case "edittimer":
                 handleEditTimer(event);
                 break;
-            case "aboutme":
-                handleAboutMe(event);
-                break;
             default:
                 event.reply("Unknown command.").setEphemeral(true).queue();
         }
-    }    
+    }
 
     private void handleAboutMe(SlashCommandInteractionEvent event) {
         String version = readVersionFromFile();
@@ -145,7 +153,43 @@ public class CommandListener extends ListenerAdapter {
 
         event.replyEmbeds(embed.build()).setEphemeral(true).queue();
     }
-
+    private void handleHelp(SlashCommandInteractionEvent event) {
+        EmbedBuilder embed = new EmbedBuilder();
+    
+        embed.setTitle("World Boss Bot Help");
+        embed.setDescription("A Discord bot designed to help Albion Online players manage world boss spawn timers for different maps.");
+        embed.setColor(Color.CYAN);
+        embed.setThumbnail(event.getJDA().getSelfUser().getAvatarUrl());
+    
+        embed.addField("Commands", 
+            "1. `/setdesignatedchannel`: Set the designated channel for timers.\n" +
+            "2. `/addtimer`: Add a timer for a world boss.\n" +
+            "3. `/deletetimer`: Delete a timer for a world boss.\n" +
+            "4. `/edittimer`: Edit a timer for a world boss.\n" +
+            "5. `/aboutme`: Get information about the bot.", false);
+    
+        embed.addField("Usage", 
+            "To use the bot, invite it to your Discord server and interact with it through Discord commands. For detailed usage, check the [documentation](https://github.com/Veyg/Albion-WB-timer-bot).", false);
+    
+        embed.addField("Support the Project", 
+            "If you find this bot useful and would like to support its development, you can [Buy Me a Coffee](https://www.buymeacoffee.com/Veyg).", false);
+    
+        embed.addField("Getting Started", 
+            "1. **Invite the Bot**: [Invite the bot to your Discord server](https://discord.com/api/oauth2/authorize?client_id=1145671676902785084&permissions=566935907456&scope=bot).\n" +
+            "2. **Set Up Designated Channels**: Use the `/setdesignatedchannel` command.\n" +
+            "3. **Add Timers**: Use the `/addtimer` command.\n" +
+            "4. **Manage Timers**: Use the `/deletetimer` and `/edittimer` commands.", false);
+    
+        embed.addField("Support", 
+            "For questions, issues, or support, you can contact the author, Veyg, or create a GitHub issue in this repository.\n" +
+            "🔗 [GitHub Repo](https://github.com/Veyg/Albion-WB-timer-bot)\n" +
+            "🔗 [Support Server](https://discord.gg/rs7u8d5FRz)", false);
+    
+        embed.setFooter("Thank you for using the World Boss Bot!");
+    
+        event.replyEmbeds(embed.build()).setEphemeral(true).queue();
+    }
+    
     private String readVersionFromFile() {
         try {
             List<String> lines = Files.readAllLines(Paths.get("VERSION"));

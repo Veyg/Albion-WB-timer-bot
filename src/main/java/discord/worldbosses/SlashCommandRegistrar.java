@@ -19,7 +19,7 @@ public class SlashCommandRegistrar {
                 jda.updateCommands().addCommands(
                                 Commands.slash("aboutme", "Get information about the bot"),
                                 Commands.slash("setdesignatedchannel", "Set the designated channel for timers"),
-
+                                Commands.slash("help", "Get a list of available commands and their descriptions"),
                                 Commands.slash("addtimer", "Add a timer for a world boss")
                                                 .addOption(OptionType.STRING, "time",
                                                                 "Time for the boss spawn in HH:mm:ss format", true)
