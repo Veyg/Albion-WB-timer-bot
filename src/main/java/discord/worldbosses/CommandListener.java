@@ -423,6 +423,7 @@ public class CommandListener extends ListenerAdapter {
                 String mapNameSkipped = extractMapNameFromMessage(event.getMessage().getContentRaw());
                 bossManager.markBossAsSkipped(mapNameSkipped);
                 sendTimersToChannel(serverId);
+                deleteAllNotificationsForBoss(mapNameSkipped); // <-- Add this line
                 break;
             case "boss_forgot":
                 event.getMessage().delete().queue();
@@ -435,6 +436,7 @@ public class CommandListener extends ListenerAdapter {
                             });
                         });
                 sendTimersToChannel(serverId);
+                deleteAllNotificationsForBoss(mapNameForgot); // <-- Add this line
                 break;
 
             default:

@@ -154,6 +154,7 @@ public class BossManager {
             data.setStatusTime(
                     LocalDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy")));
             skippedAndForgottenBosses.add(mapName);
+            
             saveTimers();
         }
     }
