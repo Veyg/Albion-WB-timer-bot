@@ -46,7 +46,7 @@ public class AlbionBot extends ListenerAdapter {
         }
 
         /******** This is only needed when you want to register commands. ********/
-        new SlashCommandRegistrar(jda).registerCommands();
+        // new SlashCommandRegistrar(jda).registerCommands();
     }
 
     @Override
