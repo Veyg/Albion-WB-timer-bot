@@ -1,4 +1,4 @@
-FROM amazoncorretto:17
+FROM amazoncorretto:21
 
 WORKDIR /app
 # Copy the VERSION file from your repository into the root directory of the Docker container
