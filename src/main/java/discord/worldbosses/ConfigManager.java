@@ -1,5 +1,6 @@
 package discord.worldbosses;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -36,9 +37,29 @@ public class ConfigManager {
         }
     }
 
+    static {
+        // Load the .env file only if it exists
+        if (new File(".env").exists()) {
+            DotEnv.load(".env");
+        }
+    }
+
+
     public static String getBotToken() {
-        String token = System.getenv("BOT_TOKEN");
-        System.out.println("Token fetched: " + (token != null && !token.isEmpty()));
+        // Try to get the BOT_TOKEN from the system properties first (local .env file)
+        String token = System.getProperty("BOT_TOKEN");
+        
+        // If not found, try to get it from the system environment variables (production)
+        if (token == null || token.isEmpty()) {
+            token = System.getenv("BOT_TOKEN");
+        }
+        
+        // If still not found, handle the error
+        if (token == null || token.isEmpty()) {
+            System.out.println("Token not found. Please check your .env file or environment variables.");
+            throw new IllegalStateException("BOT_TOKEN is not set in .env file or environment variables.");
+        }
+        
         return token;
     }
     

@@ -31,3 +31,4 @@ config.json
 .DS_Store
 target/
 data/
+.env
