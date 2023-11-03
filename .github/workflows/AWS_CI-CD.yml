@@ -24,8 +24,14 @@ jobs:
       - name: Build with Maven
         run: mvn clean package
 
+      - name: Install dependencies
+        run: npm install
+      
       - name: Semantic Release and Version Update
         run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
