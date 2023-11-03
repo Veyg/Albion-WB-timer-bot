@@ -18,11 +18,9 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-// import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-// import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -75,7 +73,7 @@ public class CommandListener extends ListenerAdapter {
             for (Map.Entry<String, TimerData> entry : bossManager.getAllTimers().entrySet()) {
                 LocalDateTime bossSpawnTime = LocalDateTime.parse(entry.getValue().getBossSpawnTime(),
                         DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"));
-                if (ChronoUnit.MINUTES.between(now, bossSpawnTime) <= 20) {
+                if (ChronoUnit.MINUTES.between(now, bossSpawnTime) <= 30) {
                     // Check if the boss has been marked as skipped or forgotten
                     if (!bossManager.isSkippedOrForgotten(entry.getKey())) {
                         sendBossNotification(serverId, entry.getKey(), entry.getValue().getBossSpawnTime());
@@ -615,7 +613,6 @@ public class CommandListener extends ListenerAdapter {
                 bossManager.markBossAsKilled(mapName, fullNewTime);
                 event.getChannel()
                         .sendMessage("Boss killed!. Timer for " + mapName + " has been updated to " + fullNewTime)
-                        // TODO: test this also
                         .queue(response -> scheduleMessageDeletion(response, 7200000));
 
                 // Clear the user's state
