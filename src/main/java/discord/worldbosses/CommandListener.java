@@ -348,8 +348,6 @@ public class CommandListener extends ListenerAdapter {
 
                 bossManager.addTimer(selectedMap, fullTime);
                 selectMenu.getChannel()
-
-                        // TODO: test this
                         .sendMessage("Timer added for " + selectedMap + " at " + fullTime)
                         .queue(response -> {
                             response.delete().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
@@ -457,8 +455,6 @@ public class CommandListener extends ListenerAdapter {
     }
 
     void sendTimersToChannel(String guildId) {
-        System.out.println("Sending timers to channel");
-
         // Fetch the designatedChannelId dynamically
         String currentDesignatedChannelId = ConfigManager.getDesignatedChannelId(guildId);
         if (currentDesignatedChannelId == null) {
@@ -560,18 +556,27 @@ public class CommandListener extends ListenerAdapter {
             embed.addField("🕣 Skipped / Forgotten:", skippedForgottenBuilder.toString(), false);
         }
 
-        // Send or edit the message
-        if (timerMessageId == null) {
-            designatedChannel.sendMessageEmbeds(embed.build()).queue(message -> timerMessageId = message.getId());
+        // First, delete the previous message if it exists
+        if (timerMessageId != null) {
+            designatedChannel.deleteMessageById(timerMessageId).queue(success -> {
+                // After deleting the old message, send a new one
+                designatedChannel.sendMessageEmbeds(embed.build()).queue(message -> {
+                    // Update the stored message ID with the new message's ID
+                    timerMessageId = message.getId();
+                });
+            }, failure -> {
+                // If something goes wrong with deletion, log the error and try to send a new message anyway
+                System.out.println("Error deleting message: " + failure.getMessage());
+                designatedChannel.sendMessageEmbeds(embed.build()).queue(message -> {
+                    // Update the stored message ID with the new message's ID
+                    timerMessageId = message.getId();
+                });
+            });
         } else {
-            designatedChannel.editMessageEmbedsById(timerMessageId, embed.build()).queue(null, throwable -> {
-                if (throwable instanceof ErrorResponseException
-                        && ((ErrorResponseException) throwable).getErrorCode() == 10008) {
-                    designatedChannel.sendMessageEmbeds(embed.build())
-                            .queue(message -> timerMessageId = message.getId());
-                } else {
-                    System.out.println("Error editing message: " + throwable.getMessage());
-                }
+            // If there is no previous message, just send a new one
+            designatedChannel.sendMessageEmbeds(embed.build()).queue(message -> {
+                // Update the stored message ID with the new message's ID
+                timerMessageId = message.getId();
             });
         }
     }
