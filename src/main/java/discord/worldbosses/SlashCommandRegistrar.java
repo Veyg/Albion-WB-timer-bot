@@ -48,7 +48,8 @@ public class SlashCommandRegistrar {
                                                                                 .addChoice("Timberslope Grove", "Timberslope Grove")
                                                                                 .addChoice("Timbertop Dale", "Timbertop Dale")
                                                                                 .addChoice("Watchwood Bluffs", "Watchwood Bluffs")
-                                                                                .addChoice("Westweald Shore", "Westweald Shore")),
+                                                                                .addChoice("Westweald Shore", "Westweald Shore"))
+                                                .addOption(OptionType.STRING, "date", "Date for the boss spawn in dd/MM/yyyy format", false), // Correct this line
 
                                 Commands.slash("deletetimer", "Delete a timer for a world boss")
                                                 .addOptions(

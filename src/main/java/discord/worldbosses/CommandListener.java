@@ -275,7 +275,8 @@ public class CommandListener extends ListenerAdapter {
     private void handleAddTimer(SlashCommandInteractionEvent event) {
         String timeInput = event.getOption("time").getAsString();
         String mapName = event.getOption("map").getAsString();
-
+        OptionMapping dateOption = event.getOption("date"); // Get the date option
+    
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
         LocalTime parsedTime;
         try {
@@ -284,21 +285,34 @@ public class CommandListener extends ListenerAdapter {
             event.reply("Invalid time format. Please use HH:mm:ss format.").setEphemeral(true).queue();
             return;
         }
-
+    
         // Ensure the time is always formatted as "HH:mm:ss"
         String formattedTime = String.format("%02d:%02d:%02d", parsedTime.getHour(), parsedTime.getMinute(),
                 parsedTime.getSecond());
-
-        // Use the current date plus two days
-        LocalDate twoDaysLater = LocalDate.now(ZoneOffset.UTC).plusDays(2);
+    
+        LocalDate date;
+        if (dateOption != null) {
+            // Parse the provided date
+            DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            try {
+                date = LocalDate.parse(dateOption.getAsString(), dateFormatter);
+            } catch (DateTimeParseException e) {
+                event.reply("Invalid date format. Please use dd/MM/yyyy format.").setEphemeral(true).queue();
+                return;
+            }
+        } else {
+            // Default to the current date plus two days
+            date = LocalDate.now(ZoneOffset.UTC).plusDays(2);
+        }
+    
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        String formattedDate = twoDaysLater.format(dateFormatter);
-
+        String formattedDate = date.format(dateFormatter);
+    
         String fullTime = formattedTime + " " + formattedDate;
-
+    
         // Store the timer using BossManager
         bossManager.addTimer(mapName, fullTime);
-        bossManager.saveTimers(); // This line needs the saveTimers method to be public in BossManager
+        bossManager.saveTimers(); // Ensure the saveTimers method is public in BossManager
         sendTimersToChannel(serverId);
         // Provide feedback to the user
         event.reply("Timer added for " + mapName + " at " + fullTime)
@@ -307,8 +321,8 @@ public class CommandListener extends ListenerAdapter {
                         scheduleMessageDeletion(originalMessage, 7200000);
                     });
                 });
-        ;
     }
+    
 
     @Override
     public void onGenericInteractionCreate(GenericInteractionCreateEvent event) {
