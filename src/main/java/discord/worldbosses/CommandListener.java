@@ -214,6 +214,8 @@ public class CommandListener extends ListenerAdapter {
         String mapName = mapNameOption.getAsString();
         String newTimeInput = newTimeOption.getAsString();
         String newDateInput = newDateOption.getAsString();
+        OptionMapping noteOption = event.getOption("note");
+        String note = (noteOption != null) ? noteOption.getAsString() : "";
 
         // Validate the time format
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
@@ -240,7 +242,7 @@ public class CommandListener extends ListenerAdapter {
         String fullNewTime = combinedDateTime.format(DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"));
 
         // Update the timer using BossManager
-        bossManager.editTimer(mapName, fullNewTime);
+        bossManager.editTimer(mapName, fullNewTime, note);
         sendTimersToChannel(serverId);
         // Provide feedback to the user
         event.reply("Timer for " + mapName + " has been updated to " + fullNewTime)
@@ -275,7 +277,10 @@ public class CommandListener extends ListenerAdapter {
     private void handleAddTimer(SlashCommandInteractionEvent event) {
         String timeInput = event.getOption("time").getAsString();
         String mapName = event.getOption("map").getAsString();
-        OptionMapping dateOption = event.getOption("date"); // Get the date option
+        OptionMapping dateOption = event.getOption("date"); 
+        OptionMapping noteOption = event.getOption("note"); 
+        String note = noteOption != null ? noteOption.getAsString() : "";
+    
     
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
         LocalTime parsedTime;
@@ -311,11 +316,15 @@ public class CommandListener extends ListenerAdapter {
         String fullTime = formattedTime + " " + formattedDate;
     
         // Store the timer using BossManager
-        bossManager.addTimer(mapName, fullTime);
+        bossManager.addTimer(mapName, fullTime, note); // You'll need to modify the addTimer method to accept a note
         bossManager.saveTimers(); // Ensure the saveTimers method is public in BossManager
         sendTimersToChannel(serverId);
         // Provide feedback to the user
-        event.reply("Timer added for " + mapName + " at " + fullTime)
+        String replyMessage = "Timer added for " + mapName + " at " + fullTime;
+        if (!note.isEmpty()) {
+            replyMessage += " with note: " + note;
+        }
+        event.reply(replyMessage)
                 .queue(response -> {
                     response.retrieveOriginal().queue(originalMessage -> {
                         scheduleMessageDeletion(originalMessage, 7200000);
@@ -346,7 +355,11 @@ public class CommandListener extends ListenerAdapter {
                 String selectedMap = (String) selectMenu.getValues().get(0);
                 String fullTime = userStates.get(userId + "_input_time") + " " + userStates.get(userId + "_input_date");
 
-                bossManager.addTimer(selectedMap, fullTime);
+            // Retrieve the note from userStates if you have stored it there previously
+            String note = userStates.containsKey(userId + "_input_note") ? userStates.get(userId + "_input_note") : "";
+
+            // Now pass the note when adding the timer
+            bossManager.addTimer(selectedMap, fullTime, note);
                 selectMenu.getChannel()
                         .sendMessage("Timer added for " + selectedMap + " at " + fullTime)
                         .queue(response -> {
@@ -513,8 +526,15 @@ public class CommandListener extends ListenerAdapter {
                         .append(" - ")
                         .append(nextSpawnTime.format(DateTimeFormatter.ofPattern("HH:mm:ss")))
                         .append(" UTC ")
-                        .append(nextSpawnTime.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")))
-                        .append("**\n");
+                        .append(nextSpawnTime.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+                
+                // Check if there is a note and append it
+                String note = nextTimer.getValue().getNote();
+                if (note != null && !note.isEmpty()) {
+                    comingUpBuilder.append(" - ").append(note);
+                }
+                
+                comingUpBuilder.append("**\n");
             }
             // Insert the "Coming up" section at the beginning of the embed
             embed.addField("🚨 Coming up:", comingUpBuilder.toString(), false);
@@ -534,10 +554,13 @@ public class CommandListener extends ListenerAdapter {
 
                 if (hoursUntilSpawn > 12) {
                     // Add to main timers section
-                    embed.addField(bossName,
-                            bossSpawnTime.format(DateTimeFormatter.ofPattern("HH:mm:ss")) + " UTC "
-                                    + bossSpawnTime.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
-                            false);
+                    String fieldText = bossSpawnTime.format(DateTimeFormatter.ofPattern("HH:mm:ss")) + " UTC "
+                            + bossSpawnTime.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+                    // Check if there is a note and append it
+                    if (timerData.getNote() != null && !timerData.getNote().isEmpty()) {
+                        fieldText += " - " + timerData.getNote();
+                    }
+                    embed.addField(bossName, fieldText, false);
                 }
             }
         }
@@ -610,28 +633,34 @@ public class CommandListener extends ListenerAdapter {
         }
         String userId = event.getAuthor().getId();
         if ("awaiting_killed_time".equals(userStates.get(userId))) {
-            String killedTimeInput = event.getMessage().getContentRaw().trim(); // Trim the input
-            System.out.println("Received killed time: " + killedTimeInput); // Debug log
+            String input = event.getMessage().getContentRaw().trim(); // Trim the input
+            System.out.println("Received killed time: " + input); // Debug log
             String mapName = userStates.get(userId + "_mapName");
-
+    
             // Schedule deletion of user's message after 2 hours
             scheduleMessageDeletion(event.getMessage(), 7200000);
-
+    
+            // Split the input into time and note parts
+            String[] parts = input.split(" ", 2);
+            String timeInput = parts[0];
+            String note = parts.length > 1 ? parts[1] : ""; // If there's a note, take it, otherwise it's an empty string
+    
             // Validate the time format with explicit locale
             DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss", Locale.US);
             try {
-                LocalTime parsedTime = LocalTime.parse(killedTimeInput, timeFormatter);
-
+                LocalTime parsedTime = LocalTime.parse(timeInput, timeFormatter);
+    
                 // Add two days to the current date
                 LocalDate twoDaysLater = LocalDate.now(ZoneOffset.UTC).plusDays(2);
                 LocalDateTime combinedDateTime = LocalDateTime.of(twoDaysLater, parsedTime);
                 String fullNewTime = combinedDateTime.format(DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"));
-
-                bossManager.markBossAsKilled(mapName, fullNewTime);
+    
+                // Pass the note along with the time to the bossManager
+                bossManager.markBossAsKilled(mapName, fullNewTime, note); // Ensure bossManager can handle the note
                 event.getChannel()
-                        .sendMessage("Boss killed!. Timer for " + mapName + " has been updated to " + fullNewTime)
+                        .sendMessage("Boss killed! Timer for " + mapName + " has been updated to " + fullNewTime + (note.isEmpty() ? "" : " with note: " + note))
                         .queue(response -> scheduleMessageDeletion(response, 7200000));
-
+    
                 // Clear the user's state
                 userStates.remove(userId);
                 userStates.remove(userId + "_mapName");
@@ -639,12 +668,13 @@ public class CommandListener extends ListenerAdapter {
                 System.out.println("Error parsing time: " + e.getMessage()); // Debug log
                 event.getChannel().sendMessage("Invalid time format. Please use HH:mm:ss format. Enter the time again.")
                         .queue(response -> scheduleMessageDeletion(response, 30000));
-
+    
                 // Keep the user in the "awaiting_killed_time" state so they can try again
             }
             sendTimersToChannel(serverId);
         }
     }
+    
     private void deleteAllNotificationsForBoss(String mapName) {
         TextChannel designatedChannel = jda.getTextChannelById(ConfigManager.getDesignatedChannelId(serverId));
         if (designatedChannel == null) return;
