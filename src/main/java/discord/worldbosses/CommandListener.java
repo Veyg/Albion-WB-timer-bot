@@ -598,8 +598,6 @@ public class CommandListener extends ListenerAdapter {
         userStates.put(event.getUser().getId() + "_mapName", mapName);
         event.reply("Enter the time the boss was killed in HH:mm:ss format.").setEphemeral(true).queue();
         deleteAllNotificationsForBoss(mapName);
-        // Delete the original boss notification
-        event.getMessage().delete().queue();
     }
 
     @Override
