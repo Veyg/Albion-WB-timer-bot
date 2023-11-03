@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/Veyg/Albion-WB-timer-bot/compare/v1.0.0...v1.0.1) (2023-11-03)
+
+
+### Bug Fixes
+
+* **ci:** resolve semantic-release dependency loading error ([ef99ecd](https://github.com/Veyg/Albion-WB-timer-bot/commit/ef99ecd487d3b9219480e58e0a43aa4e86bd57ac))
+
 # 1.0.0 (2023-11-03)
 
 
