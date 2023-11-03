@@ -46,7 +46,7 @@ public class AlbionBot extends ListenerAdapter {
         }
 
         /******** This is only needed when you want to register commands. ********/
-        // new SlashCommandRegistrar(jda).registerCommands();
+        new SlashCommandRegistrar(jda).registerCommands();
     }
 
     @Override
@@ -93,7 +93,7 @@ public class AlbionBot extends ListenerAdapter {
                             .sendMessage("Thank you for inviting me to your server! Here's some important links:\n" +
                                     "Support the server: https://www.buymeacoffee.com/Veyg\n" +
                                     "Documentation: https://veyg.me/worldbossbot/\n" +
-                                    "Discord for support: https://discord.gg/QqRC8vnaeZ\n" +
+                                    "Discord for support: Soon \n" +
                                     "GitHub repo: https://github.com/Veyg/Albion-WB-timer-bot" +
                                     "Feel free to reach out if you have any questions or need assistance. Enjoy using the bot!")
                             .queue(

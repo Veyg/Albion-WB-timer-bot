@@ -23,11 +23,55 @@
 hs_err_pid*
 replay_pid*
 
-#Crucial data files - not for public consumption
+# IDEs and editors #
+/.idea
+*.iml
+*.iws
+*.ipr
+.classpath
+.project
+.settings/
+.vscode/
+.DS_Store
+
+# Maven #
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+
+# Dependency directories #
+# e.g., Node modules if using frontend build tools
+/node_modules/
+
+# Operating system temporary files #
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Docker #
+Dockerfile.*.bak
+*.swp
+*~
+
+# Application-specific files #
+# Sensitive data files and environment configs
 *.dat
 timers.json
 config.json
-.vscode/
-.DS_Store
-target/
+.env
+# Add other data files specific to your application
+
+# Data directories #
 data/
+
+# Backup files #
+*~
+*.bak
+*.swp
+*.tmp
+
+# Other files and directories to ignore #
+# Add any other file or directory that should be ignored by git
