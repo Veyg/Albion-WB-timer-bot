@@ -59,7 +59,6 @@ public class ConfigManager {
             System.out.println("Token not found. Please check your .env file or environment variables.");
             throw new IllegalStateException("BOT_TOKEN is not set in .env file or environment variables.");
         }
-        
         return token;
     }
     
