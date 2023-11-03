@@ -5,4 +5,4 @@ WORKDIR /app
 COPY VERSION /app/
 COPY ./target/albionwbtimer-1.0.3.jar /app/
 
-CMD ["java", "-jar", "/app/albionwbtimer-1.0.3.jar"]
+CMD ["java", "-jar", "/app/albionwbtimer-1.0.2.jar"]
