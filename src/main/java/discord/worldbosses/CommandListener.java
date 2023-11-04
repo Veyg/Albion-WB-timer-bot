@@ -17,6 +17,7 @@ import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEve
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -73,14 +74,20 @@ public class CommandListener extends ListenerAdapter {
             for (Map.Entry<String, TimerData> entry : bossManager.getAllTimers().entrySet()) {
                 LocalDateTime bossSpawnTime = LocalDateTime.parse(entry.getValue().getBossSpawnTime(),
                         DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"));
-                if (ChronoUnit.MINUTES.between(now, bossSpawnTime) <= 30) {
-                    // Check if the boss has been marked as skipped or forgotten
-                    if (!bossManager.isSkippedOrForgotten(entry.getKey())) {
-                        sendBossNotification(serverId, entry.getKey(), entry.getValue().getBossSpawnTime());
+                long minutesUntilSpawn = ChronoUnit.MINUTES.between(now, bossSpawnTime);
+    
+                // Check if the boss has been marked as skipped or forgotten
+                if (!bossManager.isSkippedOrForgotten(entry.getKey())) {
+                    // Send a notification only once, 30 minutes before spawn
+                    if (minutesUntilSpawn == 30) {
+                        // Check if we have already sent a notification for this boss
+                        if (!bossNotificationMessages.containsKey(entry.getKey())) {
+                            sendBossNotification(serverId, entry.getKey(), entry.getValue().getBossSpawnTime(), minutesUntilSpawn);
+                        }
                     }
                 }
             }
-        }, 0, 5, TimeUnit.MINUTES);
+        }, 0, 1, TimeUnit.MINUTES); // Check every minute
     }
 
     @Override
@@ -413,28 +420,34 @@ public class CommandListener extends ListenerAdapter {
         sendTimersToChannel(serverId);
     }
 
-    public void sendBossNotification(String guildId, String mapName, String time) {
-        String currentDesignatedChannelId = ConfigManager.getDesignatedChannelId(guildId);
-        if (currentDesignatedChannelId == null)
-            return;
-        TextChannel designatedChannel = jda.getTextChannelById(currentDesignatedChannelId);
-        if (designatedChannel == null)
-            return;
+        public void sendBossNotification(String guildId, String mapName, String time, long minutesUntilSpawn) {
+            String currentDesignatedChannelId = ConfigManager.getDesignatedChannelId(guildId);
+            if (currentDesignatedChannelId == null)
+                return;
+            TextChannel designatedChannel = jda.getTextChannelById(currentDesignatedChannelId);
+            if (designatedChannel == null)
+                return;
 
-        Button killedButton = Button.primary("boss_killed", "Killed").withEmoji(Emoji.fromUnicode("🐘"));
-        Button skippedButton = Button.secondary("boss_skipped", "Skipped").withEmoji(Emoji.fromUnicode("🕣"));
-        Button forgotButton = Button.danger("boss_forgot", "Forgot").withEmoji(Emoji.fromUnicode("❓"));
+            // Unique key for the notification
+            String notificationKey = mapName + "_" + time;
 
-        designatedChannel.sendMessage("@everyone\n**WORLD BOSS SPAWNING SOON**\nMap: " + mapName + "\nTime: " + time)
+            // Check if the notification for this boss at this time has already been sent
+            if (bossNotificationMessages.containsKey(notificationKey)) {
+                return; // If it has been sent, do nothing
+            }
+
+            Button killedButton = Button.primary("boss_killed", "Killed").withEmoji(Emoji.fromUnicode("🐘"));
+            Button skippedButton = Button.secondary("boss_skipped", "Skipped").withEmoji(Emoji.fromUnicode("🕣"));
+            Button forgotButton = Button.danger("boss_forgot", "Forgot").withEmoji(Emoji.fromUnicode("❓"));
+
+            designatedChannel.sendMessage("@everyone\n**WORLD BOSS SPAWNING SOON**\nMap: " + mapName + "\nTime: " + time)
             .setActionRow(killedButton, skippedButton, forgotButton)
             .queue(message -> {
-            // Store the message ID for this boss
-            bossNotificationMessages.computeIfAbsent(mapName, k -> new ArrayList<>()).add(message.getId());
+                // Store the message ID for this boss
+                bossNotificationMessages.put(mapName, Arrays.asList(message.getId()));
             });
-        // After sending the notification, add it to the set of sent notifications
-        // String currentDate = LocalDate.now(ZoneOffset.UTC).toString();
-        // sentNotifications.add(mapName + "_" + time + "_" + currentDate);
     }
+
 
     public void onButtonInteraction(ButtonInteraction event) {
         switch (event.getComponentId()) {
