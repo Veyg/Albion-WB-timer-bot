@@ -39,14 +39,13 @@ public class BossManager {
                 .collect(Collectors.toList());
     }
 
-    public void addTimer(String mapName, String time) {
-        logger.info("Added timer for {} at {}", mapName, time);
-        logger.info("Adding timer for map: {} on Directory: {}", mapName, SERVER_DIRECTORY);
-
-        mapTimers.put(mapName, new TimerData(time));
+    public void addTimer(String mapName, String time, String note) {
+        logger.info("Added timer for {} at {} with note: {}", mapName, time, note);
+        mapTimers.put(mapName, new TimerData(time, note));
         skippedAndForgottenBosses.remove(mapName);
         saveTimers();
     }
+    
 
     public String getBossSpawnTime(String mapName) {
         TimerData data = mapTimers.get(mapName);
@@ -57,11 +56,20 @@ public class BossManager {
         return new HashMap<>(mapTimers);
     }
 
-    public void editTimer(String mapName, String newTime) {
-        logger.info("Edited timer for {} to {}", mapName, newTime);
-        mapTimers.put(mapName, new TimerData(newTime));
+    public void editTimer(String mapName, String newTime, String newNote) {
+        logger.info("Edited timer for {} to {} with note: {}", mapName, newTime, newNote);
+        TimerData data = mapTimers.get(mapName);
+        if (data != null) {
+            data.setBossSpawnTime(newTime);
+            data.setNote(newNote); // Update the note as well
+        } else {
+            // If there's no existing timer, create a new one with the note
+            data = new TimerData(newTime, newNote);
+        }
+        mapTimers.put(mapName, data);
         saveTimers();
     }
+    
 
     public void deleteTimer(String mapName) {
         mapTimers.remove(mapName);
@@ -120,7 +128,7 @@ public class BossManager {
         }
     }
 
-    public void markBossAsKilled(String mapName, String killedDateTime) {
+    public void markBossAsKilled(String mapName, String killedDateTime, String note) {
         TimerData data = mapTimers.get(mapName);
         if (data != null) {
             // Try to parse the provided killedDateTime
@@ -132,12 +140,13 @@ public class BossManager {
                 logger.error("Error parsing killed time: {}", killedDateTime, e);
                 return;
             }
-
-            // Set the new spawn time
+    
+            // Set the new spawn time and note
             String formattedDateTime = newSpawnDateTime.format(dateTimeFormatter);
             data.setBossSpawnTime(formattedDateTime);
-            logger.info("Updated spawn time for {} to {}", mapName, formattedDateTime);
-
+            data.setNote(note);
+            logger.info("Updated spawn time for {} to {} with note: {}", mapName, formattedDateTime, note);
+    
             // Reset the status
             data.setStatus(null);
             data.setStatusTime(null);
@@ -182,10 +191,19 @@ public class BossManager {
         private String bossSpawnTime;
         private String status;
         private String statusTime;
-
+        private String note; // New field to store the note
+    
+        // Constructor with note parameter
+        public TimerData(String bossSpawnTime, String note) {
+            this.bossSpawnTime = bossSpawnTime;
+            this.note = note;
+        }
+        
         public TimerData(String bossSpawnTime) {
             this.bossSpawnTime = bossSpawnTime;
+            this.note = ""; // Default to empty string or null, depending on your requirement
         }
+        
 
         public String getBossSpawnTime() {
             return bossSpawnTime;
@@ -209,6 +227,13 @@ public class BossManager {
 
         public void setStatusTime(String statusTime) {
             this.statusTime = statusTime;
+        }
+        public String getNote() {
+            return note;
+        }
+    
+        public void setNote(String note) {
+            this.note = note;
         }
     }
 }

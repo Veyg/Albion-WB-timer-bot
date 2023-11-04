@@ -49,8 +49,8 @@ public class SlashCommandRegistrar {
                                                                                 .addChoice("Timbertop Dale", "Timbertop Dale")
                                                                                 .addChoice("Watchwood Bluffs", "Watchwood Bluffs")
                                                                                 .addChoice("Westweald Shore", "Westweald Shore"))
-                                                .addOption(OptionType.STRING, "date", "Date for the boss spawn in dd/MM/yyyy format", false), // Correct this line
-
+                                                .addOption(OptionType.STRING, "date", "Date for the boss spawn in dd/MM/yyyy format", false)
+                                                .addOption(OptionType.STRING, "note", "A note about the timer", false),
                                 Commands.slash("deletetimer", "Delete a timer for a world boss")
                                                 .addOptions(
                                                                 new OptionData(OptionType.STRING, "map",
@@ -109,7 +109,9 @@ public class SlashCommandRegistrar {
                                                                 "New time for the boss spawn in HH:mm:ss format", true)
                                                 .addOption(OptionType.STRING, "newdate",
                                                                 "New date for the boss spawn in d/MM/yyyy format",
-                                                                true))
+                                                                true)
+                                                .addOption(OptionType.STRING, "note", "An optional note about the timer", false))
+
                                 .queue();
 
         }
