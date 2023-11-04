@@ -252,13 +252,15 @@ public class CommandListener extends ListenerAdapter {
         bossManager.editTimer(mapName, fullNewTime, note);
         sendTimersToChannel(serverId);
         // Provide feedback to the user
-        event.reply("Timer for " + mapName + " has been updated to " + fullNewTime)
-                .queue(response -> {
-                    response.retrieveOriginal().queue(originalMessage -> {
-                        scheduleMessageDeletion(originalMessage, 7200000);
-                    });
-                });
-
+        String replyMessage = "Timer for " + mapName + " has been updated to " + fullNewTime;
+        if (!note.isEmpty()) {
+            replyMessage += " with note: " + note;
+        }
+        event.reply(replyMessage).queue(response -> {
+            response.retrieveOriginal().queue(originalMessage -> {
+                scheduleMessageDeletion(originalMessage, 7200000);
+            });
+        });
     }
 
     private void handleDeleteTimer(SlashCommandInteractionEvent event) {

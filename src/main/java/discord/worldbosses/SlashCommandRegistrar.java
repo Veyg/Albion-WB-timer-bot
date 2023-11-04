@@ -109,7 +109,9 @@ public class SlashCommandRegistrar {
                                                                 "New time for the boss spawn in HH:mm:ss format", true)
                                                 .addOption(OptionType.STRING, "newdate",
                                                                 "New date for the boss spawn in d/MM/yyyy format",
-                                                                true))
+                                                                true)
+                                                .addOption(OptionType.STRING, "note", "An optional note about the timer", false))
+
                                 .queue();
 
         }
