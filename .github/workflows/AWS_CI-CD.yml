@@ -21,26 +21,11 @@ jobs:
           distribution: "adopt"
           java-version: "21"
 
-      - name: Install dependencies
-        run: npm install
-      
-      - name: Semantic Release and Version Update
-        run: npx semantic-release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: List files in the current directory
-        run: ls -la
-        
       - name: Build with Maven
         run: mvn clean package
 
-      - name: Build Docker image with new version
-        run: |
-          VERSION=$(cat VERSION)
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          docker build -t veyg/albiondiscordbot:$VERSION .
-          docker tag veyg/albiondiscordbot:$VERSION veyg/albiondiscordbot:latest
+      - name: Build Docker image
+        run: docker build -t veyg/albiondiscordbot .
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -48,33 +33,24 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: Push Docker image to Docker Hub with new version
-        run: |
-          VERSION=$(cat VERSION)
-          docker push veyg/albiondiscordbot:$VERSION
-          docker push veyg/albiondiscordbot:latest
+      - name: Push Docker image to Docker Hub
+        run: docker push veyg/albiondiscordbot
 
-      - name: SSH and Deploy to EC2 with new version
+      - name: SSH and Deploy to EC2
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-          envs: BOT_TOKEN,VERSION
+          envs: BOT_TOKEN  # Passing the environment variable to the SSH session
           script: |
-            VERSION=$(cat VERSION)
             # Stop and remove all containers using the veyg/albiondiscordbot image
             docker ps -a | awk '{ print $1,$2 }' | grep veyg/albiondiscordbot | awk '{print $1 }' | xargs -I {} docker stop {}
             docker ps -a | awk '{ print $1,$2 }' | grep veyg/albiondiscordbot | awk '{print $1 }' | xargs -I {} docker rm {}
 
             # Pull the latest image and run it
-            sudo docker pull veyg/albiondiscordbot:$VERSION
-            sudo docker run -d -v /ebs-data:/app/data -e BOT_TOKEN=$BOT_TOKEN --name albiondiscordbot veyg/albiondiscordbot:$VERSION
+            sudo docker pull veyg/albiondiscordbot
+            sudo docker run -d -v /ebs-data:/app/data -e BOT_TOKEN=$BOT_TOKEN --name albiondiscordbot veyg/albiondiscordbot
 
             # Clean up unused (dangling) images
-            dangling_images=$(docker images -f "dangling=true" -q)
-            if [ -n "$dangling_images" ]; then
-                docker rmi $dangling_images
-            else
-                echo "No dangling images to remove."
-            fi
+            docker rmi $(docker images -f "dangling=true" -q)
