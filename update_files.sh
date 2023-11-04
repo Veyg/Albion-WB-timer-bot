@@ -10,4 +10,5 @@ echo $NEW_VERSION > VERSION
 mvn versions:set -DnewVersion=$NEW_VERSION
 
 # Update Dockerfile to use the new jar file name
-sed -i "s/albionwbtimer-.*\.jar/albionwbtimer-$NEW_VERSION.jar/" Dockerfile
+
+sed -i '' "s/albionwbtimer-.*\.jar/albionwbtimer-$NEW_VERSION.jar/" Dockerfile
