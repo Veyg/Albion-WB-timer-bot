@@ -325,8 +325,8 @@ public class CommandListener extends ListenerAdapter {
         String fullTime = formattedTime + " " + formattedDate;
     
         // Store the timer using BossManager
-        bossManager.addTimer(mapName, fullTime, note); // You'll need to modify the addTimer method to accept a note
-        bossManager.saveTimers(); // Ensure the saveTimers method is public in BossManager
+        bossManager.addTimer(mapName, fullTime, note); 
+        bossManager.saveTimers(); 
         sendTimersToChannel(serverId);
         // Provide feedback to the user
         String replyMessage = "Timer added for " + mapName + " at " + fullTime;
@@ -461,7 +461,7 @@ public class CommandListener extends ListenerAdapter {
                 String mapNameSkipped = extractMapNameFromMessage(event.getMessage().getContentRaw());
                 bossManager.markBossAsSkipped(mapNameSkipped);
                 sendTimersToChannel(serverId);
-                deleteAllNotificationsForBoss(mapNameSkipped); // <-- Add this line
+                deleteAllNotificationsForBoss(mapNameSkipped); 
                 break;
             case "boss_forgot":
                 event.getMessage().delete().queue();
@@ -474,7 +474,7 @@ public class CommandListener extends ListenerAdapter {
                             });
                         });
                 sendTimersToChannel(serverId);
-                deleteAllNotificationsForBoss(mapNameForgot); // <-- Add this line
+                deleteAllNotificationsForBoss(mapNameForgot); 
                 break;
 
             default:
