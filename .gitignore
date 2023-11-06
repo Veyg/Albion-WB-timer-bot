@@ -75,3 +75,4 @@ data/
 
 # Other files and directories to ignore #
 # Add any other file or directory that should be ignored by git
+/logs/
