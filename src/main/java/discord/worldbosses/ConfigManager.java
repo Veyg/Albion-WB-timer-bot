@@ -1,81 +1,87 @@
 package discord.worldbosses;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import com.google.gson.Gson;
-import com.google.gson.JsonSyntaxException;
 
 public class ConfigManager {
-    private static final Logger logger = LoggerFactory.getLogger(ConfigManager.class);
     private static final Gson gson = new Gson();
     private static final Path DATA_DIRECTORY = Paths.get("data");
-
-    static {
-        // Load the .env file only if it exists
-        if (Files.exists(Paths.get(".env"))) {
-            DotEnv.load(".env");
-        }
-    }
 
     public static String getDesignatedChannelId(String serverId) {
         try {
             String content = readConfigFile(serverId);
             if (content != null) {
                 ServerConfig config = gson.fromJson(content, ServerConfig.class);
-                return config.designatedChannelId;
+                if (config != null) {
+                    return config.designatedChannelId;
+                }
             }
         } catch (IOException e) {
-            logger.error("Error reading configuration for server: {}", serverId, e);
-        } catch (JsonSyntaxException e) {
-            logger.error("Malformed JSON in configuration for server: {}", serverId, e);
+            e.printStackTrace(); 
         }
         return null;
     }
 
     public static void setDesignatedChannelId(String serverId, String channelId) {
-        ServerConfig config = new ServerConfig(channelId);
+        ServerConfig config = new ServerConfig();
+        config.designatedChannelId = channelId;
         String json = gson.toJson(config);
         try {
             writeConfigFile(serverId, json);
         } catch (IOException e) {
-            logger.error("Error writing configuration for server: {}", serverId, e);
+            e.printStackTrace(); // Handle or log the exception
         }
     }
 
+    static {
+        // Load the .env file only if it exists
+        if (new File(".env").exists()) {
+            DotEnv.load(".env");
+        }
+    }
+
+
     public static String getBotToken() {
-        String token = System.getProperty("BOT_TOKEN", System.getenv("BOT_TOKEN"));
+        // Try to get the BOT_TOKEN from the system properties first (local .env file)
+        String token = System.getProperty("BOT_TOKEN");
+        
+        // If not found, try to get it from the system environment variables (production)
         if (token == null || token.isEmpty()) {
-            logger.error("BOT_TOKEN is not set in .env file or environment variables.");
+            token = System.getenv("BOT_TOKEN");
+        }
+        
+        // If still not found, handle the error
+        if (token == null || token.isEmpty()) {
+            System.out.println("Token not found. Please check your .env file or environment variables.");
             throw new IllegalStateException("BOT_TOKEN is not set in .env file or environment variables.");
         }
         return token;
     }
-
+    
+    
     private static String readConfigFile(String serverId) throws IOException {
         Path filePath = DATA_DIRECTORY.resolve(serverId).resolve("config.json");
         if (Files.exists(filePath)) {
-            return Files.readString(filePath);
+            return new String(Files.readAllBytes(filePath));
         }
         return null;
     }
 
     private static void writeConfigFile(String serverId, String json) throws IOException {
         Path directoryPath = DATA_DIRECTORY.resolve(serverId);
-        Files.createDirectories(directoryPath);
+        if (!Files.exists(directoryPath)) {
+            Files.createDirectories(directoryPath);
+        }
         Path filePath = directoryPath.resolve("config.json");
-        Files.writeString(filePath, json);
+        Files.write(filePath, json.getBytes());
     }
 
-    private static class ServerConfig {
-        String designatedChannelId;
 
-        ServerConfig(String designatedChannelId) {
-            this.designatedChannelId = designatedChannelId;
-        }
+ private static class ServerConfig {
+        public String designatedChannelId;
     }
 }

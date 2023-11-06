@@ -19,6 +19,7 @@ public class SlashCommandRegistrar {
 
     private OptionData getMapOptionData() {
         OptionData mapOption = new OptionData(OptionType.STRING, "map", "Name of the map", true);
+        // Add all the map choices here
         String[] maps = {
             "Darkground Swamp", "Deadvein Gully", "Deathwisp Sink", "Drownfield Wetland", "Dryvein Steppe",
             "Farshore Heath", "Flimmerair Steppe", "Hightree Levee", "Longfen Arms", "Longfen Veins",
@@ -52,7 +53,7 @@ public class SlashCommandRegistrar {
                 .addOption(OptionType.STRING, "newdate", "New date for the boss spawn in d/MM/yyyy format", true)
                 .addOption(OptionType.STRING, "note", "An optional note about the timer", false)
         ).queue(
-            success -> logger.info("Commands registered successfully"), 
+            success -> logger.info("Commands registered successfully"),
             failure -> logger.error("Command registration failed: ", failure)
         );
     }
