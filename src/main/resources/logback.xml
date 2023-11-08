@@ -7,10 +7,10 @@
     </appender>
 
     <appender name="RollingFile" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>logs/bot.log</file>
+        <file>/app/app-logs/worldbossbot/bot.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <!-- daily rollover with automatic directory creation -->
-            <fileNamePattern>logs/bot.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <fileNamePattern>/app/app-logs/worldbossbot/bot.%d{yyyy-MM-dd}.log</fileNamePattern>
             <!-- keep 14 days' worth of history -->
             <maxHistory>14</maxHistory>
         </rollingPolicy>
