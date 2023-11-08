@@ -26,6 +26,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import discord.worldbosses.BossManager.TimerData;
 import java.awt.Color;
 
@@ -50,6 +53,7 @@ public class CommandListener extends ListenerAdapter {
     // private Set<String> sentNotifications = new HashSet<>();
     private String serverId;
     private Map<String, List<String>> bossNotificationMessages = new HashMap<>();
+    private static final Logger logger = LoggerFactory.getLogger(CommandListener.class);
 
     public CommandListener(JDA jda, String designatedChannelId, String serverId) {
         this.jda = jda;
@@ -374,7 +378,7 @@ public class CommandListener extends ListenerAdapter {
                         .queue(response -> {
                             response.delete().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
                                 if (throwable instanceof ErrorResponseException) {
-                                    System.out.println("Error deleting message with ID: " + response.getId()
+                                    logger.error("Error deleting message with ID: " + response.getId()
                                             + ". Error: " + throwable.getMessage());
                                 }
                             });
@@ -403,7 +407,7 @@ public class CommandListener extends ListenerAdapter {
                     .queue(response -> {
                         response.deleteOriginal().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
                             if (throwable instanceof ErrorResponseException) {
-                                System.out.println("Error deleting message with ID: " + event.getInteraction().getId()
+                                logger.error("Error deleting message with ID: " + event.getInteraction().getId()
                                         + ". Error: " + throwable.getMessage());
                             }
                         });
@@ -413,7 +417,7 @@ public class CommandListener extends ListenerAdapter {
                     .queue(response -> {
                         response.deleteOriginal().queueAfter(10, TimeUnit.SECONDS, null, throwable -> {
                             if (throwable instanceof ErrorResponseException) {
-                                System.out.println("Error deleting message with ID: " + event.getInteraction().getId()
+                                logger.error("Error deleting message with ID: " + event.getInteraction().getId()
                                         + ". Error: " + throwable.getMessage());
                             }
                         });
@@ -486,19 +490,19 @@ public class CommandListener extends ListenerAdapter {
         // Fetch the designatedChannelId dynamically
         String currentDesignatedChannelId = ConfigManager.getDesignatedChannelId(guildId);
         if (currentDesignatedChannelId == null) {
-            System.out.println("Designated channel ID is null.");
+            logger.info("Designated channel ID is null.");
             return; // No designated channel set
         }
 
         TextChannel designatedChannel = jda.getTextChannelById(currentDesignatedChannelId);
         if (designatedChannel == null) {
-            System.out.println("Designated channel not found.");
+            logger.info("Designated channel not found.");
             return; // Designated channel not found
         }
 
         List<Map.Entry<String, TimerData>> sortedTimers = bossManager.getSortedTimers();
         if (sortedTimers.isEmpty()) {
-            System.out.println("No timers to send.");
+            logger.info("No timers to send.");
             return; // No timers to send
         }
 
@@ -604,7 +608,7 @@ public class CommandListener extends ListenerAdapter {
                 });
             }, failure -> {
                 // If something goes wrong with deletion, log the error and try to send a new message anyway
-                System.out.println("Error deleting message: " + failure.getMessage());
+                logger.error("Error deleting message: " + failure.getMessage());
                 designatedChannel.sendMessageEmbeds(embed.build()).queue(message -> {
                     // Update the stored message ID with the new message's ID
                     timerMessageId = message.getId();
@@ -649,7 +653,7 @@ public class CommandListener extends ListenerAdapter {
         String userId = event.getAuthor().getId();
         if ("awaiting_killed_time".equals(userStates.get(userId))) {
             String input = event.getMessage().getContentRaw().trim(); // Trim the input
-            System.out.println("Received killed time: " + input); // Debug log
+            logger.info("Received killed time: " + input); // Debug log
             String mapName = userStates.get(userId + "_mapName");
     
             // Schedule deletion of user's message after 2 hours
@@ -680,7 +684,7 @@ public class CommandListener extends ListenerAdapter {
                 userStates.remove(userId);
                 userStates.remove(userId + "_mapName");
             } catch (DateTimeParseException e) {
-                System.out.println("Error parsing time: " + e.getMessage()); // Debug log
+                logger.error("Error parsing time: " + e.getMessage()); // Debug log
                 event.getChannel().sendMessage("Invalid time format. Please use HH:mm:ss format. Enter the time again.")
                         .queue(response -> scheduleMessageDeletion(response, 30000));
     
@@ -699,7 +703,7 @@ public class CommandListener extends ListenerAdapter {
             for (String messageId : messageIds) {
                 designatedChannel.deleteMessageById(messageId).queue(null, throwable -> {
                     if (throwable instanceof ErrorResponseException) {
-                        System.out.println("Error deleting message with ID: " + messageId + ". Error: " + throwable.getMessage());
+                        logger.error("Error deleting message with ID: " + messageId + ". Error: " + throwable.getMessage());
                     }
                 });
             }

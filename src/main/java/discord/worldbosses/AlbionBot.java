@@ -19,104 +19,92 @@ import java.util.Map;
 
 public class AlbionBot extends ListenerAdapter {
     private static final Logger logger = LoggerFactory.getLogger(AlbionBot.class);
-    
+    private static Map<String, BossManager> bossManagers = new HashMap<>();
+
     public static void main(String[] args) throws Exception {
-        
+        JDA jda = initializeBot();
+        initializeServers(jda);
+        registerSlashCommands(jda);
+    }
+
+    private static JDA initializeBot() throws Exception {
         String token = ConfigManager.getBotToken();
         JDABuilder builder = JDABuilder.createDefault(token);
         builder.enableIntents(GatewayIntent.GUILD_MESSAGES, GatewayIntent.MESSAGE_CONTENT);
         builder.setActivity(Activity.watching("World Bosses"));
-
-        // Add the AlbionBot instance as an event listener
         builder.addEventListeners(new AlbionBot());
-
         JDA jda = builder.build();
         jda.awaitReady();
+        return jda;
+    }
 
-        // Initialize BossManager for each server the bot is in
-        Map<String, BossManager> bossManagers = new HashMap<>();
+    private static void initializeServers(JDA jda) {
         for (Guild guild : jda.getGuilds()) {
-            String serverId = guild.getId();
-            bossManagers.put(serverId, new BossManager(serverId));
-
-            // Set up the CommandListener for this server
-            String designatedChannelId = ConfigManager.getDesignatedChannelId(serverId);
-            CommandListener commandListener = new CommandListener(jda, designatedChannelId, serverId);
-            jda.addEventListener(commandListener);
+            initializeForGuild(jda, guild.getId());
         }
+    }
 
-        /******** This is only needed when you want to register commands. ********/
+    private static void registerSlashCommands(JDA jda) {
         new SlashCommandRegistrar(jda).registerCommands();
+    }
+
+    private static void initializeForGuild(JDA jda, String serverId) {
+        bossManagers.put(serverId, new BossManager(serverId));
+        String designatedChannelId = ConfigManager.getDesignatedChannelId(serverId);
+        CommandListener commandListener = new CommandListener(jda, designatedChannelId, serverId);
+        jda.addEventListener(commandListener);
     }
 
     @Override
     public void onGuildJoin(GuildJoinEvent event) {
         String serverId = event.getGuild().getId();
-        String serverDataDir = "data/" + serverId + "/";
-    
-        // Create a new timers.json file for this server if it doesn't exist
-        File serverTimersFile = new File(serverDataDir + "timers.json");
-        if (!serverTimersFile.exists()) {
-            serverTimersFile.getParentFile().mkdirs();
+        createServerFiles(serverId);
+        sendWelcomeMessageIfPossible(event, serverId); // Pass serverId as an argument
+        initializeForGuild(event.getJDA(), serverId);
+    }
+
+    private void createServerFiles(String serverId) {
+        createFile("data/" + serverId + "/", "timers.json");
+        createFile("data/" + serverId + "/", "config.json");
+    }
+
+    private void createFile(String directory, String fileName) {
+        File file = new File(directory + fileName);
+        if (!file.exists()) {
             try {
-                if (serverTimersFile.createNewFile()) {
-                    // Optionally, initialize the timers.json file with default data here
-                }
+                file.getParentFile().mkdirs();
+                file.createNewFile();
             } catch (IOException e) {
-                e.printStackTrace();
+                logger.error("Failed to create file: " + directory + fileName, e);
             }
         }
-    
-        // Create a new config.json file for this server if it doesn't exist
-        File serverConfigFile = new File(serverDataDir + "config.json");
-        if (!serverConfigFile.exists()) {
-            try {
-                if (serverConfigFile.createNewFile()) {
-                    // Optionally, initialize the config.json file with default data here
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    
-        // Check if the bot has the VIEW_AUDIT_LOGS permission
+    }
+
+    private void sendWelcomeMessageIfPossible(GuildJoinEvent event, String serverId) {
         if (event.getGuild().getSelfMember().hasPermission(Permission.VIEW_AUDIT_LOGS)) {
-            // Get the user who invited the bot
-            String inviterId = event.getGuild().retrieveAuditLogs().type(ActionType.BOT_ADD).complete().get(0).getUser()
-                    .getId();
-    
-            // Get the private channel with the inviter
-            event.getJDA().retrieveUserById(inviterId).queue(inviter -> {
-                inviter.openPrivateChannel().queue(privateChannel -> {
-                    // Send the private message
-                    privateChannel
-                            .sendMessage("Thank you for inviting me to your server! Here's some important links:\n" +
-                                    "Support the server: https://www.buymeacoffee.com/Veyg\n" +
-                                    "Documentation: https://veyg.me/worldbossbot/\n" +
-                                    "Discord for support: Soon \n" +
-                                    "GitHub repo: https://github.com/Veyg/Albion-WB-timer-bot" +
-                                    "Feel free to reach out if you have any questions or need assistance. Enjoy using the bot!")
-                            .queue(
-                                    // Success callback
-                                    success -> {
-                                        // Handle success if needed (e.g., log a message)
-                                        logger.info("Message sent to inviter successfully.");
-                                    },
-                                    // Failure callback
-                                    error -> {
-                                        // Handle failure (e.g., log an error message)
-                                        logger.error("Failed to send message to inviter.", error);
-                                    });
-                });
-            });
+            event.getGuild().retrieveAuditLogs().type(ActionType.BOT_ADD).queue(auditLogEntries -> {
+                if (!auditLogEntries.isEmpty()) {
+                    String inviterId = auditLogEntries.get(0).getUser().getId();
+                    event.getJDA().retrieveUserById(inviterId).queue(inviter -> {
+                        inviter.openPrivateChannel().queue(privateChannel -> {
+                            privateChannel.sendMessage(getWelcomeMessage()).queue(
+                                    success -> logger.info("Message sent to inviter successfully."),
+                                    error -> logger.error("Failed to send message to inviter.", error));
+                        });
+                    });
+                }
+            }, error -> logger.warn("Failed to retrieve audit logs.", error));
         } else {
             logger.warn("Bot does not have VIEW_AUDIT_LOGS permission in server: {}", serverId);
         }
-    
-        // When the bot joins a new server, initialize BossManager and CommandListener
-        // Set up the CommandListener for this server
-        String designatedChannelId = ConfigManager.getDesignatedChannelId(serverId);
-        CommandListener commandListener = new CommandListener(event.getJDA(), designatedChannelId, serverId);
-        event.getJDA().addEventListener(commandListener);
+    }
+
+    private String getWelcomeMessage() {
+        return "Thank you for inviting me to your server! Here's some important links:\n" +
+                "Support the server: https://www.buymeacoffee.com/Veyg\n" +
+                "Documentation: https://veyg.me/worldbossbot/\n" +
+                "Discord for support: Soon \n" +
+                "GitHub repo: https://github.com/Veyg/Albion-WB-timer-bot\n" +
+                "Feel free to reach out if you have any questions or need assistance. Enjoy using the bot!";
     }
 }
