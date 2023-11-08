@@ -6,18 +6,19 @@
         </layout>
     </appender>
 
-    <appender name="RollingFile" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>/app/app-logs/worldbossbot/bot.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <!-- daily rollover with automatic directory creation -->
-            <fileNamePattern>/app/app-logs/worldbossbot/bot.%d{yyyy-MM-dd}.log</fileNamePattern>
-            <!-- keep 14 days' worth of history -->
-            <maxHistory>14</maxHistory>
-        </rollingPolicy>
-        <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
-        </encoder>
-    </appender>
+        <appender name="RollingFile" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>/ebs-data/bot-logs/worldbossbot/bot.log</file>
+            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+                <!-- daily rollover with automatic directory creation -->
+                <fileNamePattern>/ebs-data/bot-logs/worldbossbot/bot.%d{yyyy-MM-dd}.log</fileNamePattern>
+                <!-- keep 14 days' worth of history -->
+                <maxHistory>14</maxHistory>
+            </rollingPolicy>
+            <encoder>
+                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            </encoder>
+        </appender>
+
 
     <root level="info">
         <appender-ref ref="Console" />
