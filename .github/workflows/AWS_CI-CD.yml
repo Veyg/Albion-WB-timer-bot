@@ -44,6 +44,10 @@ jobs:
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
           envs: BOT_TOKEN  # Passing the environment variable to the SSH session
           script: |
+            # Create the logs directory if it doesn't exist
+            mkdir -p /ebs-data/bot-logs/worldbossbot
+            chmod -R 777 /ebs-data/bot-logs/worldbossbot  # Adjust permissions as necessary
+
             # Stop and remove all containers using the veyg/albiondiscordbot image
             docker ps -a | awk '{ print $1,$2 }' | grep veyg/albiondiscordbot | awk '{print $1 }' | xargs -I {} docker stop {}
             docker ps -a | awk '{ print $1,$2 }' | grep veyg/albiondiscordbot | awk '{print $1 }' | xargs -I {} docker rm {}
