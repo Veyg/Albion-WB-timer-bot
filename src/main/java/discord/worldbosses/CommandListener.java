@@ -62,6 +62,10 @@ public class CommandListener extends ListenerAdapter {
 
         startPeriodicCheck();
     }
+    private void logAction(String action, String username, String details) {
+        String logEntry = String.format("User: %s, Action: %s, Details: %s", username, action, details);
+        logger.info(logEntry);
+    }
 
     private void scheduleMessageDeletion(Message message, long delayMillis) {
         new java.util.Timer().schedule(new java.util.TimerTask() {
@@ -79,14 +83,15 @@ public class CommandListener extends ListenerAdapter {
                 LocalDateTime bossSpawnTime = LocalDateTime.parse(entry.getValue().getBossSpawnTime(),
                         DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"));
                 long minutesUntilSpawn = ChronoUnit.MINUTES.between(now, bossSpawnTime);
-    
+
                 // Check if the boss has been marked as skipped or forgotten
                 if (!bossManager.isSkippedOrForgotten(entry.getKey())) {
                     // Send a notification only once, 30 minutes before spawn
                     if (minutesUntilSpawn == 30) {
                         // Check if we have already sent a notification for this boss
                         if (!bossNotificationMessages.containsKey(entry.getKey())) {
-                            sendBossNotification(serverId, entry.getKey(), entry.getValue().getBossSpawnTime(), minutesUntilSpawn);
+                            sendBossNotification(serverId, entry.getKey(), entry.getValue().getBossSpawnTime(),
+                                    minutesUntilSpawn);
                         }
                     }
                 }
@@ -100,35 +105,35 @@ public class CommandListener extends ListenerAdapter {
             return; // Ignore events from other servers
         }
         String currentDesignatedChannelId = ConfigManager.getDesignatedChannelId(event.getGuild().getId());
-    
+
         // Check if the command is setdesignatedchannel and if the user is an admin
         if (event.getName().equals("setdesignatedchannel")) {
             if (event.getMember().hasPermission(Permission.ADMINISTRATOR)) {
                 handleSetDesignatedChannel(event);
             } else {
                 event.reply("You need administrator permissions to set the designated channel.")
-                     .setEphemeral(true).queue();
+                        .setEphemeral(true).queue();
             }
             return;
         }
-    
+
         // Allow /aboutme and /help to be accessible even outside the designated channel
         if (event.getName().equals("aboutme")) {
             handleAboutMe(event);
             return;
         }
-    
+
         if (event.getName().equals("help")) {
             handleHelp(event);
             return;
         }
-    
+
         // For all other commands, check if they are used in the designated channel
         if (!event.getChannel().getId().equals(currentDesignatedChannelId)) {
             event.reply("Don't use it here 🤓").setEphemeral(true).queue();
             return; // Ignore interactions outside the designated channel
         }
-    
+
         switch (event.getName()) {
             case "addtimer":
                 handleAddTimer(event);
@@ -144,73 +149,6 @@ public class CommandListener extends ListenerAdapter {
         }
     }
 
-    private void handleAboutMe(SlashCommandInteractionEvent event) {
-        String version = readVersionFromFile();
-
-        EmbedBuilder embed = new EmbedBuilder();
-
-        embed.setTitle("About AlbionBot");
-        embed.setDescription(
-                "I'm AlbionBot, designed to assist you with world bosses in Albion Online! For more information visit my website.");
-        embed.addField("Current Version", version, false);
-        embed.addField("Website", "[Bot's Website](https://veyg.me/worldbossbot/)", false);
-        embed.addField("Github", "[Github](https://github.com/Veyg/Albion-WB-timer-bot)", false);
-        embed.addField("Support Me", "[Buy me a coffee](https://www.buymeacoffee.com/veyg)", false);
-        embed.addField("Discord support link", "[Discord](https://discord.gg/QqRC8vnaeZ)", false);
-        embed.setColor(Color.CYAN);
-        embed.setThumbnail(event.getJDA().getSelfUser().getAvatarUrl());
-
-        event.replyEmbeds(embed.build()).setEphemeral(true).queue();
-    }
-    private void handleHelp(SlashCommandInteractionEvent event) {
-        EmbedBuilder embed = new EmbedBuilder();
-    
-        embed.setTitle("World Boss Bot Help");
-        embed.setDescription("A Discord bot designed to help Albion Online players manage world boss spawn timers for different maps.");
-        embed.setColor(Color.CYAN);
-        embed.setThumbnail(event.getJDA().getSelfUser().getAvatarUrl());
-    
-        embed.addField("Commands", 
-            "1. `/setdesignatedchannel`: Set the designated channel for timers.\n" +
-            "2. `/addtimer`: Add a timer for a world boss.\n" +
-            "3. `/deletetimer`: Delete a timer for a world boss.\n" +
-            "4. `/edittimer`: Edit a timer for a world boss.\n" +
-            "5. `/aboutme`: Get information about the bot.", false);
-    
-        embed.addField("Usage", 
-            "To use the bot, invite it to your Discord server and interact with it through Discord commands. For detailed usage, check the [documentation](https://github.com/Veyg/Albion-WB-timer-bot).", false);
-    
-        embed.addField("Support the Project", 
-            "If you find this bot useful and would like to support its development, you can [Buy Me a Coffee](https://www.buymeacoffee.com/Veyg).", false);
-    
-        embed.addField("Getting Started", 
-            "1. **Invite the Bot**: [Invite the bot to your Discord server](https://discord.com/api/oauth2/authorize?client_id=1145671676902785084&permissions=566935907456&scope=bot).\n" +
-            "2. **Set Up Designated Channels**: Use the `/setdesignatedchannel` command.\n" +
-            "3. **Add Timers**: Use the `/addtimer` command.\n" +
-            "4. **Manage Timers**: Use the `/deletetimer` and `/edittimer` commands.", false);
-    
-        embed.addField("Support", 
-            "For questions, issues, or support, you can contact the author, Veyg, or create a GitHub issue in this repository.\n" +
-            "🔗 [GitHub Repo](https://github.com/Veyg/Albion-WB-timer-bot)\n" +
-            "🔗 [Support Server](https://discord.gg/rs7u8d5FRz)", false);
-    
-        embed.setFooter("Thank you for using the World Boss Bot!");
-    
-        event.replyEmbeds(embed.build()).setEphemeral(true).queue();
-    }
-    
-    private String readVersionFromFile() {
-        try {
-            List<String> lines = Files.readAllLines(Paths.get("VERSION"));
-            if (!lines.isEmpty()) {
-                return lines.get(0).trim();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return "Unknown Version";
-    }
-
     private void handleEditTimer(SlashCommandInteractionEvent event) {
         OptionMapping mapNameOption = event.getOption("map");
         OptionMapping newTimeOption = event.getOption("newtime");
@@ -221,7 +159,7 @@ public class CommandListener extends ListenerAdapter {
                     .setEphemeral(true).queue();
             return;
         }
-
+        
         String mapName = mapNameOption.getAsString();
         String newTimeInput = newTimeOption.getAsString();
         String newDateInput = newDateOption.getAsString();
@@ -251,7 +189,9 @@ public class CommandListener extends ListenerAdapter {
         // Combine the date and time to form the full new time
         LocalDateTime combinedDateTime = LocalDateTime.of(parsedNewDate, parsedNewTime);
         String fullNewTime = combinedDateTime.format(DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"));
-
+        String username = event.getUser().getName(); // Get the username of the person who triggered the event
+        String details = "Edited timer for map: " + mapName + " to " + newTimeInput + " " + newDateInput;
+        logAction("Edit timer", username, details);
         // Update the timer using BossManager
         bossManager.editTimer(mapName, fullNewTime, note);
         sendTimersToChannel(serverId);
@@ -276,7 +216,9 @@ public class CommandListener extends ListenerAdapter {
         }
 
         String mapName = mapNameOption.getAsString();
-
+        String username = event.getUser().getName(); // Get the username of the person who triggered the event
+        String details = "Deleted timer for map: " + mapName;
+        logAction("Delete Timer", username, details);
         // Check if the timer exists before deleting
         if (bossManager.getAllTimers().containsKey(mapName)) {
             bossManager.deleteTimer(mapName);
@@ -290,11 +232,10 @@ public class CommandListener extends ListenerAdapter {
     private void handleAddTimer(SlashCommandInteractionEvent event) {
         String timeInput = event.getOption("time").getAsString();
         String mapName = event.getOption("map").getAsString();
-        OptionMapping dateOption = event.getOption("date"); 
-        OptionMapping noteOption = event.getOption("note"); 
+        OptionMapping dateOption = event.getOption("date");
+        OptionMapping noteOption = event.getOption("note");
         String note = noteOption != null ? noteOption.getAsString() : "";
-    
-    
+        
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
         LocalTime parsedTime;
         try {
@@ -303,11 +244,11 @@ public class CommandListener extends ListenerAdapter {
             event.reply("Invalid time format. Please use HH:mm:ss format.").setEphemeral(true).queue();
             return;
         }
-    
+
         // Ensure the time is always formatted as "HH:mm:ss"
         String formattedTime = String.format("%02d:%02d:%02d", parsedTime.getHour(), parsedTime.getMinute(),
                 parsedTime.getSecond());
-    
+
         LocalDate date;
         if (dateOption != null) {
             // Parse the provided date
@@ -322,15 +263,17 @@ public class CommandListener extends ListenerAdapter {
             // Default to the current date plus two days
             date = LocalDate.now(ZoneOffset.UTC).plusDays(2);
         }
-    
+
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
         String formattedDate = date.format(dateFormatter);
-    
+
         String fullTime = formattedTime + " " + formattedDate;
-    
+        String username = event.getUser().getName(); // Get the username of the person who triggered the event
+        String details = "Added timer for map: " + mapName + " at " + fullTime;
+        logAction("Add Timer", username, details);
         // Store the timer using BossManager
-        bossManager.addTimer(mapName, fullTime, note); 
-        bossManager.saveTimers(); 
+        bossManager.addTimer(mapName, fullTime, note);
+        bossManager.saveTimers();
         sendTimersToChannel(serverId);
         // Provide feedback to the user
         String replyMessage = "Timer added for " + mapName + " at " + fullTime;
@@ -344,7 +287,6 @@ public class CommandListener extends ListenerAdapter {
                     });
                 });
     }
-    
 
     @Override
     public void onGenericInteractionCreate(GenericInteractionCreateEvent event) {
@@ -368,11 +310,12 @@ public class CommandListener extends ListenerAdapter {
                 String selectedMap = (String) selectMenu.getValues().get(0);
                 String fullTime = userStates.get(userId + "_input_time") + " " + userStates.get(userId + "_input_date");
 
-            // Retrieve the note from userStates if you have stored it there previously
-            String note = userStates.containsKey(userId + "_input_note") ? userStates.get(userId + "_input_note") : "";
+                // Retrieve the note from userStates if you have stored it there previously
+                String note = userStates.containsKey(userId + "_input_note") ? userStates.get(userId + "_input_note")
+                        : "";
 
-            // Now pass the note when adding the timer
-            bossManager.addTimer(selectedMap, fullTime, note);
+                // Now pass the note when adding the timer
+                bossManager.addTimer(selectedMap, fullTime, note);
                 selectMenu.getChannel()
                         .sendMessage("Timer added for " + selectedMap + " at " + fullTime)
                         .queue(response -> {
@@ -426,59 +369,58 @@ public class CommandListener extends ListenerAdapter {
         sendTimersToChannel(serverId);
     }
 
-        public void sendBossNotification(String guildId, String mapName, String time, long minutesUntilSpawn) {
-            String currentDesignatedChannelId = ConfigManager.getDesignatedChannelId(guildId);
-            if (currentDesignatedChannelId == null)
-                return;
-            TextChannel designatedChannel = jda.getTextChannelById(currentDesignatedChannelId);
-            if (designatedChannel == null)
-                return;
+    public void sendBossNotification(String guildId, String mapName, String time, long minutesUntilSpawn) {
+        String currentDesignatedChannelId = ConfigManager.getDesignatedChannelId(guildId);
+        if (currentDesignatedChannelId == null)
+            return;
+        TextChannel designatedChannel = jda.getTextChannelById(currentDesignatedChannelId);
+        if (designatedChannel == null)
+            return;
 
-            // Unique key for the notification
-            String notificationKey = mapName + "_" + time;
+        // Unique key for the notification
+        String notificationKey = mapName + "_" + time;
 
-            // Check if the notification for this boss at this time has already been sent
-            if (bossNotificationMessages.containsKey(notificationKey)) {
-                return; // If it has been sent, do nothing
-            }
+        // Check if the notification for this boss at this time has already been sent
+        if (bossNotificationMessages.containsKey(notificationKey)) {
+            return; // If it has been sent, do nothing
+        }
 
-            Button killedButton = Button.primary("boss_killed", "Killed").withEmoji(Emoji.fromUnicode("🐘"));
-            Button skippedButton = Button.secondary("boss_skipped", "Skipped").withEmoji(Emoji.fromUnicode("🕣"));
-            Button forgotButton = Button.danger("boss_forgot", "Forgot").withEmoji(Emoji.fromUnicode("❓"));
+        Button killedButton = Button.primary("boss_killed", "Killed").withEmoji(Emoji.fromUnicode("🐘"));
+        Button skippedButton = Button.secondary("boss_skipped", "Skipped").withEmoji(Emoji.fromUnicode("🕣"));
+        Button forgotButton = Button.danger("boss_forgot", "Forgot").withEmoji(Emoji.fromUnicode("❓"));
 
-            designatedChannel.sendMessage("@everyone\n**WORLD BOSS SPAWNING SOON**\nMap: " + mapName + "\nTime: " + time)
-            .setActionRow(killedButton, skippedButton, forgotButton)
-            .queue(message -> {
-                // Store the message ID for this boss
-                bossNotificationMessages.put(mapName, Arrays.asList(message.getId()));
-            });
+        designatedChannel.sendMessage("@everyone\n**WORLD BOSS SPAWNING SOON**\nMap: " + mapName + "\nTime: " + time)
+                .setActionRow(killedButton, skippedButton, forgotButton)
+                .queue(message -> {
+                    // Store the message ID for this boss
+                    bossNotificationMessages.put(mapName, Arrays.asList(message.getId()));
+                });
     }
 
-
     public void onButtonInteraction(ButtonInteraction event) {
+        String username = event.getUser().getName();
+        String mapName = extractMapNameFromMessage(event.getMessage().getContentRaw());    
         switch (event.getComponentId()) {
             case "boss_killed":
                 handleBossKilled(event);
+                logAction("Boss Killed", username, "Map: " + mapName);
                 break;
             case "boss_skipped":
                 event.getMessage().delete().queue();
                 String mapNameSkipped = extractMapNameFromMessage(event.getMessage().getContentRaw());
                 bossManager.markBossAsSkipped(mapNameSkipped);
+                logAction("Boss Skipped", username, "Map: " + mapName);
                 sendTimersToChannel(serverId);
-                deleteAllNotificationsForBoss(mapNameSkipped); 
+                deleteAllNotificationsForBoss(mapNameSkipped);
                 break;
             case "boss_forgot":
                 event.getMessage().delete().queue();
                 String mapNameForgot = extractMapNameFromMessage(event.getMessage().getContentRaw());
                 bossManager.markBossAsForgotten(mapNameForgot);
-                event.reply("Boss was forgotten!")
-                        .queue(response -> {
-                            response.retrieveOriginal().queue(originalMessage -> {
-                                scheduleMessageDeletion(originalMessage, 7200000);
-                            });
-                        });
+                event.reply("Boss was forgotten!");
+                logAction("Boss Forgot", username, "Map: " + mapName);
                 sendTimersToChannel(serverId);
-                deleteAllNotificationsForBoss(mapNameForgot); 
+                deleteAllNotificationsForBoss(mapNameForgot);
                 break;
 
             default:
@@ -546,13 +488,13 @@ public class CommandListener extends ListenerAdapter {
                         .append(nextSpawnTime.format(DateTimeFormatter.ofPattern("HH:mm:ss")))
                         .append(" UTC ")
                         .append(nextSpawnTime.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
-                
+
                 // Check if there is a note and append it
                 String note = nextTimer.getValue().getNote();
                 if (note != null && !note.isEmpty()) {
                     comingUpBuilder.append(" - ").append(note);
                 }
-                
+
                 comingUpBuilder.append("**\n");
             }
             // Insert the "Coming up" section at the beginning of the embed
@@ -607,7 +549,8 @@ public class CommandListener extends ListenerAdapter {
                     timerMessageId = message.getId();
                 });
             }, failure -> {
-                // If something goes wrong with deletion, log the error and try to send a new message anyway
+                // If something goes wrong with deletion, log the error and try to send a new
+                // message anyway
                 logger.error("Error deleting message: " + failure.getMessage());
                 designatedChannel.sendMessageEmbeds(embed.build()).queue(message -> {
                     // Update the stored message ID with the new message's ID
@@ -655,31 +598,33 @@ public class CommandListener extends ListenerAdapter {
             String input = event.getMessage().getContentRaw().trim(); // Trim the input
             logger.info("Received killed time: " + input); // Debug log
             String mapName = userStates.get(userId + "_mapName");
-    
+
             // Schedule deletion of user's message after 2 hours
             scheduleMessageDeletion(event.getMessage(), 7200000);
-    
+
             // Split the input into time and note parts
             String[] parts = input.split(" ", 2);
             String timeInput = parts[0];
-            String note = parts.length > 1 ? parts[1] : ""; // If there's a note, take it, otherwise it's an empty string
-    
+            String note = parts.length > 1 ? parts[1] : ""; // If there's a note, take it, otherwise it's an empty
+                                                            // string
+
             // Validate the time format with explicit locale
             DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss", Locale.US);
             try {
                 LocalTime parsedTime = LocalTime.parse(timeInput, timeFormatter);
-    
+
                 // Add two days to the current date
                 LocalDate twoDaysLater = LocalDate.now(ZoneOffset.UTC).plusDays(2);
                 LocalDateTime combinedDateTime = LocalDateTime.of(twoDaysLater, parsedTime);
                 String fullNewTime = combinedDateTime.format(DateTimeFormatter.ofPattern("HH:mm:ss d/MM/yyyy"));
-    
+
                 // Pass the note along with the time to the bossManager
                 bossManager.markBossAsKilled(mapName, fullNewTime, note); // Ensure bossManager can handle the note
                 event.getChannel()
-                        .sendMessage("Boss killed! Timer for " + mapName + " has been updated to " + fullNewTime + (note.isEmpty() ? "" : " with note: " + note))
+                        .sendMessage("Boss killed! Timer for " + mapName + " has been updated to " + fullNewTime
+                                + (note.isEmpty() ? "" : " with note: " + note))
                         .queue(response -> scheduleMessageDeletion(response, 7200000));
-    
+
                 // Clear the user's state
                 userStates.remove(userId);
                 userStates.remove(userId + "_mapName");
@@ -687,23 +632,25 @@ public class CommandListener extends ListenerAdapter {
                 logger.error("Error parsing time: " + e.getMessage()); // Debug log
                 event.getChannel().sendMessage("Invalid time format. Please use HH:mm:ss format. Enter the time again.")
                         .queue(response -> scheduleMessageDeletion(response, 30000));
-    
+
                 // Keep the user in the "awaiting_killed_time" state so they can try again
             }
             sendTimersToChannel(serverId);
         }
     }
-    
+
     private void deleteAllNotificationsForBoss(String mapName) {
         TextChannel designatedChannel = jda.getTextChannelById(ConfigManager.getDesignatedChannelId(serverId));
-        if (designatedChannel == null) return;
-    
+        if (designatedChannel == null)
+            return;
+
         List<String> messageIds = bossNotificationMessages.get(mapName);
         if (messageIds != null) {
             for (String messageId : messageIds) {
                 designatedChannel.deleteMessageById(messageId).queue(null, throwable -> {
                     if (throwable instanceof ErrorResponseException) {
-                        logger.error("Error deleting message with ID: " + messageId + ". Error: " + throwable.getMessage());
+                        logger.error(
+                                "Error deleting message with ID: " + messageId + ". Error: " + throwable.getMessage());
                     }
                 });
             }
@@ -711,6 +658,81 @@ public class CommandListener extends ListenerAdapter {
             bossNotificationMessages.remove(mapName);
         }
     }
-    
+
+    private void handleAboutMe(SlashCommandInteractionEvent event) {
+        String version = readVersionFromFile();
+
+        EmbedBuilder embed = new EmbedBuilder();
+
+        embed.setTitle("About AlbionBot");
+        embed.setDescription(
+                "I'm AlbionBot, designed to assist you with world bosses in Albion Online! For more information visit my website.");
+        embed.addField("Current Version", version, false);
+        embed.addField("Website", "[Bot's Website](https://veyg.me/worldbossbot/)", false);
+        embed.addField("Github", "[Github](https://github.com/Veyg/Albion-WB-timer-bot)", false);
+        embed.addField("Support Me", "[Buy me a coffee](https://www.buymeacoffee.com/veyg)", false);
+        embed.addField("Discord support link", "[Discord](https://discord.gg/QqRC8vnaeZ)", false);
+        embed.setColor(Color.CYAN);
+        embed.setThumbnail(event.getJDA().getSelfUser().getAvatarUrl());
+
+        event.replyEmbeds(embed.build()).setEphemeral(true).queue();
+    }
+
+    private void handleHelp(SlashCommandInteractionEvent event) {
+        EmbedBuilder embed = new EmbedBuilder();
+
+        embed.setTitle("World Boss Bot Help");
+        embed.setDescription(
+                "A Discord bot designed to help Albion Online players manage world boss spawn timers for different maps.");
+        embed.setColor(Color.CYAN);
+        embed.setThumbnail(event.getJDA().getSelfUser().getAvatarUrl());
+
+        embed.addField("Commands",
+                "1. `/setdesignatedchannel`: Set the designated channel for timers.\n" +
+                        "2. `/addtimer`: Add a timer for a world boss.\n" +
+                        "3. `/deletetimer`: Delete a timer for a world boss.\n" +
+                        "4. `/edittimer`: Edit a timer for a world boss.\n" +
+                        "5. `/aboutme`: Get information about the bot.",
+                false);
+
+        embed.addField("Usage",
+                "To use the bot, invite it to your Discord server and interact with it through Discord commands. For detailed usage, check the [documentation](https://github.com/Veyg/Albion-WB-timer-bot).",
+                false);
+
+        embed.addField("Support the Project",
+                "If you find this bot useful and would like to support its development, you can [Buy Me a Coffee](https://www.buymeacoffee.com/Veyg).",
+                false);
+
+        embed.addField("Getting Started",
+                "1. **Invite the Bot**: [Invite the bot to your Discord server](https://discord.com/api/oauth2/authorize?client_id=1145671676902785084&permissions=566935907456&scope=bot).\n"
+                        +
+                        "2. **Set Up Designated Channels**: Use the `/setdesignatedchannel` command.\n" +
+                        "3. **Add Timers**: Use the `/addtimer` command.\n" +
+                        "4. **Manage Timers**: Use the `/deletetimer` and `/edittimer` commands.",
+                false);
+
+        embed.addField("Support",
+                "For questions, issues, or support, you can contact the author, Veyg, or create a GitHub issue in this repository.\n"
+                        +
+                        "🔗 [GitHub Repo](https://github.com/Veyg/Albion-WB-timer-bot)\n" +
+                        "🔗 [Support Server](https://discord.gg/rs7u8d5FRz)",
+                false);
+
+        embed.setFooter("Thank you for using the World Boss Bot!");
+
+        event.replyEmbeds(embed.build()).setEphemeral(true).queue();
+    }
+
+    private String readVersionFromFile() {
+        try {
+            List<String> lines = Files.readAllLines(Paths.get("VERSION"));
+            if (!lines.isEmpty()) {
+                return lines.get(0).trim();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return "Unknown Version";
+    }
 
 }
