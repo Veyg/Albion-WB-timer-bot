@@ -40,7 +40,6 @@ public class BossManager {
     }
 
     public void addTimer(String mapName, String time, String note) {
-        logger.info("Added timer for {} at {} with note: {}", mapName, time, note);
         mapTimers.put(mapName, new TimerData(time, note));
         skippedAndForgottenBosses.remove(mapName);
         saveTimers();
