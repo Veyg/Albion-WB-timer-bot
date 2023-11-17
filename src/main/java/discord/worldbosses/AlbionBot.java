@@ -15,11 +15,17 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 public class AlbionBot extends ListenerAdapter {
     private static final Logger logger = LoggerFactory.getLogger(AlbionBot.class);
     private static Map<String, BossManager> bossManagers = new HashMap<>();
+    private static Set<String> initializedGuilds = new HashSet<>(); 
+    private static boolean commandsRegistered = false; // Flag to track if commands are registered
+
+
 
     public static void main(String[] args) throws Exception {
         JDA jda = initializeBot();
@@ -45,14 +51,20 @@ public class AlbionBot extends ListenerAdapter {
     }
 
     private static void registerSlashCommands(JDA jda) {
-        new SlashCommandRegistrar(jda).registerCommands();
+        if (!commandsRegistered) { // Check if commands are already registered
+            new SlashCommandRegistrar(jda).registerCommands();
+            commandsRegistered = true; // Set the flag to true
+        }
     }
 
     private static void initializeForGuild(JDA jda, String serverId) {
-        bossManagers.put(serverId, new BossManager(serverId));
-        String designatedChannelId = ConfigManager.getDesignatedChannelId(serverId);
-        CommandListener commandListener = new CommandListener(jda, designatedChannelId, serverId);
-        jda.addEventListener(commandListener);
+        if (!initializedGuilds.contains(serverId)) { // Check if the guild is already initialized
+            bossManagers.put(serverId, new BossManager(serverId));
+            String designatedChannelId = ConfigManager.getDesignatedChannelId(serverId);
+            CommandListener commandListener = new CommandListener(jda, designatedChannelId, serverId);
+            jda.addEventListener(commandListener);
+            initializedGuilds.add(serverId); // Add to the set
+        }
     }
 
     @Override

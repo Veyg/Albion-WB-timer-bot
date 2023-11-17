@@ -62,6 +62,7 @@ public class CommandListener extends ListenerAdapter {
 
         startPeriodicCheck();
     }
+
     private void logAction(String action, String username, String details) {
         String logEntry = String.format("User: %s, Action: %s, Details: %s", username, action, details);
         logger.info(logEntry);
@@ -101,31 +102,27 @@ public class CommandListener extends ListenerAdapter {
 
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
-        // Handle /aboutme and /help commands first, as they are accessible in DMs and guilds
+        // Ignore all commands in DMs
+        if (event.getGuild() == null) {
+            // event.reply("Commands in DMs are not supported.").setEphemeral(true).queue();
+            return;
+        }
         if (event.getName().equals("aboutme")) {
             handleAboutMe(event);
             return;
         }
-    
         if (event.getName().equals("help")) {
             handleHelp(event);
             return;
         }
-    
-        // For DMs, provide a generic response for other commands
-        if (event.getGuild() == null) {
-            event.reply("If you need help or have any questions, please contact me on Discord: Infactor")
-                 .setEphemeral(true).queue();
-            return;
-        }
-    
+
         // Guild-specific logic starts here
         if (!event.getGuild().getId().equals(this.serverId)) {
             return; // Ignore events from other servers
         }
-    
+
         String currentDesignatedChannelId = ConfigManager.getDesignatedChannelId(event.getGuild().getId());
-    
+
         // Check if the command is setdesignatedchannel and if the user is an admin
         if (event.getName().equals("setdesignatedchannel")) {
             if (event.getMember().hasPermission(Permission.ADMINISTRATOR)) {
@@ -136,13 +133,13 @@ public class CommandListener extends ListenerAdapter {
             }
             return;
         }
-    
+
         // For all other commands, check if they are used in the designated channel
         if (!event.getChannel().getId().equals(currentDesignatedChannelId)) {
             event.reply("Don't use it here 🤓").setEphemeral(true).queue();
             return; // Ignore interactions outside the designated channel
         }
-    
+
         // Handling other commands
         switch (event.getName()) {
             case "addtimer":
@@ -158,8 +155,6 @@ public class CommandListener extends ListenerAdapter {
                 event.reply("Unknown command.").setEphemeral(true).queue();
         }
     }
-    
-    
 
     private void handleEditTimer(SlashCommandInteractionEvent event) {
         OptionMapping mapNameOption = event.getOption("map");
@@ -171,7 +166,7 @@ public class CommandListener extends ListenerAdapter {
                     .setEphemeral(true).queue();
             return;
         }
-        
+
         String mapName = mapNameOption.getAsString();
         String newTimeInput = newTimeOption.getAsString();
         String newDateInput = newDateOption.getAsString();
@@ -247,7 +242,7 @@ public class CommandListener extends ListenerAdapter {
         OptionMapping dateOption = event.getOption("date");
         OptionMapping noteOption = event.getOption("note");
         String note = noteOption != null ? noteOption.getAsString() : "";
-        
+
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
         LocalTime parsedTime;
         try {
@@ -416,7 +411,7 @@ public class CommandListener extends ListenerAdapter {
 
     public void onButtonInteraction(ButtonInteraction event) {
         String username = event.getUser().getName();
-        String mapName = extractMapNameFromMessage(event.getMessage().getContentRaw());    
+        String mapName = extractMapNameFromMessage(event.getMessage().getContentRaw());
         switch (event.getComponentId()) {
             case "boss_killed":
                 handleBossKilled(event);
@@ -677,11 +672,10 @@ public class CommandListener extends ListenerAdapter {
     }
 
     private void handleAboutMe(SlashCommandInteractionEvent event) {
-        
+        System.out.println("Replying to command in handleAboutMe method");
         String version = readVersionFromFile();
 
         EmbedBuilder embed = new EmbedBuilder();
-
         embed.setTitle("About AlbionBot");
         embed.setDescription(
                 "I'm AlbionBot, designed to assist you with world bosses in Albion Online! For more information visit my website.");
@@ -689,10 +683,9 @@ public class CommandListener extends ListenerAdapter {
         embed.addField("Website", "[Bot's Website](https://veyg.me/worldbossbot/)", false);
         embed.addField("Github", "[Github](https://github.com/Veyg/Albion-WB-timer-bot)", false);
         embed.addField("Support Me", "[Buy me a coffee](https://www.buymeacoffee.com/veyg)", false);
-        embed.addField("Discord Contact", "Infactor", false);
+        embed.addField("Discord Contact", "Infactor", false); // Updated as per your request
         embed.setColor(Color.CYAN);
         embed.setThumbnail(event.getJDA().getSelfUser().getAvatarUrl());
-
         event.replyEmbeds(embed.build()).setEphemeral(true).queue();
     }
 
