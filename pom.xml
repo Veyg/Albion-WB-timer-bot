@@ -6,7 +6,7 @@
 
     <groupId>discord.worldbosses</groupId>
     <artifactId>albionwbtimer</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.4</version>
 
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
