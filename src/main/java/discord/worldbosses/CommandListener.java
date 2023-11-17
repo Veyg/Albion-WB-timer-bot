@@ -101,11 +101,31 @@ public class CommandListener extends ListenerAdapter {
 
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
+        // Handle /aboutme and /help commands first, as they are accessible in DMs and guilds
+        if (event.getName().equals("aboutme")) {
+            handleAboutMe(event);
+            return;
+        }
+    
+        if (event.getName().equals("help")) {
+            handleHelp(event);
+            return;
+        }
+    
+        // For DMs, provide a generic response for other commands
+        if (event.getGuild() == null) {
+            event.reply("If you need help or have any questions, please contact me on Discord: Infactor")
+                 .setEphemeral(true).queue();
+            return;
+        }
+    
+        // Guild-specific logic starts here
         if (!event.getGuild().getId().equals(this.serverId)) {
             return; // Ignore events from other servers
         }
+    
         String currentDesignatedChannelId = ConfigManager.getDesignatedChannelId(event.getGuild().getId());
-
+    
         // Check if the command is setdesignatedchannel and if the user is an admin
         if (event.getName().equals("setdesignatedchannel")) {
             if (event.getMember().hasPermission(Permission.ADMINISTRATOR)) {
@@ -116,24 +136,14 @@ public class CommandListener extends ListenerAdapter {
             }
             return;
         }
-
-        // Allow /aboutme and /help to be accessible even outside the designated channel
-        if (event.getName().equals("aboutme")) {
-            handleAboutMe(event);
-            return;
-        }
-
-        if (event.getName().equals("help")) {
-            handleHelp(event);
-            return;
-        }
-
+    
         // For all other commands, check if they are used in the designated channel
         if (!event.getChannel().getId().equals(currentDesignatedChannelId)) {
             event.reply("Don't use it here 🤓").setEphemeral(true).queue();
             return; // Ignore interactions outside the designated channel
         }
-
+    
+        // Handling other commands
         switch (event.getName()) {
             case "addtimer":
                 handleAddTimer(event);
@@ -148,6 +158,8 @@ public class CommandListener extends ListenerAdapter {
                 event.reply("Unknown command.").setEphemeral(true).queue();
         }
     }
+    
+    
 
     private void handleEditTimer(SlashCommandInteractionEvent event) {
         OptionMapping mapNameOption = event.getOption("map");
@@ -290,6 +302,11 @@ public class CommandListener extends ListenerAdapter {
 
     @Override
     public void onGenericInteractionCreate(GenericInteractionCreateEvent event) {
+        // Check if the event is from a guild
+        if (event.getGuild() == null) {
+            return;
+        }
+
         if (!event.getGuild().getId().equals(this.serverId)) {
             return; // Ignore events from other servers
         }
@@ -660,6 +677,7 @@ public class CommandListener extends ListenerAdapter {
     }
 
     private void handleAboutMe(SlashCommandInteractionEvent event) {
+        
         String version = readVersionFromFile();
 
         EmbedBuilder embed = new EmbedBuilder();
@@ -671,7 +689,7 @@ public class CommandListener extends ListenerAdapter {
         embed.addField("Website", "[Bot's Website](https://veyg.me/worldbossbot/)", false);
         embed.addField("Github", "[Github](https://github.com/Veyg/Albion-WB-timer-bot)", false);
         embed.addField("Support Me", "[Buy me a coffee](https://www.buymeacoffee.com/veyg)", false);
-        embed.addField("Discord support link", "[Discord](https://discord.gg/QqRC8vnaeZ)", false);
+        embed.addField("Discord Contact", "Infactor", false);
         embed.setColor(Color.CYAN);
         embed.setThumbnail(event.getJDA().getSelfUser().getAvatarUrl());
 
