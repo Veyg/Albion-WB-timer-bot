@@ -55,11 +55,10 @@ public class CommandListener extends ListenerAdapter {
     private Map<String, List<String>> bossNotificationMessages = new HashMap<>();
     private static final Logger logger = LoggerFactory.getLogger(CommandListener.class);
 
-    public CommandListener(JDA jda, String designatedChannelId, String serverId) {
+    public CommandListener(JDA jda, String designatedChannelId, String serverId, BossManager bossManager) {
         this.jda = jda;
-        this.serverId = serverId; // Store the serverId
-        this.bossManager = new BossManager(serverId);
-
+        this.serverId = serverId;
+        this.bossManager = bossManager;
         startPeriodicCheck();
     }
 
@@ -102,9 +101,9 @@ public class CommandListener extends ListenerAdapter {
 
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
-        // Ignore all commands in DMs
-        if (event.getGuild() == null) {
-            // event.reply("Commands in DMs are not supported.").setEphemeral(true).queue();
+        logger.info("Handling slash command interaction: " + event.getName());
+        if (!event.getGuild().getId().equals(this.serverId)) {
+            // This event is not for the guild this listener is responsible for
             return;
         }
         if (event.getName().equals("aboutme")) {
@@ -115,14 +114,20 @@ public class CommandListener extends ListenerAdapter {
             handleHelp(event);
             return;
         }
-
+    
+        // Ignore all other commands in DMs
+        if (event.getGuild() == null) {
+            event.reply("Commands in DMs are not supported.").setEphemeral(true).queue();
+            return;
+        }
+    
         // Guild-specific logic starts here
         if (!event.getGuild().getId().equals(this.serverId)) {
             return; // Ignore events from other servers
         }
-
+    
         String currentDesignatedChannelId = ConfigManager.getDesignatedChannelId(event.getGuild().getId());
-
+    
         // Check if the command is setdesignatedchannel and if the user is an admin
         if (event.getName().equals("setdesignatedchannel")) {
             if (event.getMember().hasPermission(Permission.ADMINISTRATOR)) {
@@ -133,13 +138,13 @@ public class CommandListener extends ListenerAdapter {
             }
             return;
         }
-
+    
         // For all other commands, check if they are used in the designated channel
         if (!event.getChannel().getId().equals(currentDesignatedChannelId)) {
             event.reply("Don't use it here 🤓").setEphemeral(true).queue();
             return; // Ignore interactions outside the designated channel
         }
-
+    
         // Handling other commands
         switch (event.getName()) {
             case "addtimer":
@@ -155,6 +160,7 @@ public class CommandListener extends ListenerAdapter {
                 event.reply("Unknown command.").setEphemeral(true).queue();
         }
     }
+    
 
     private void handleEditTimer(SlashCommandInteractionEvent event) {
         OptionMapping mapNameOption = event.getOption("map");

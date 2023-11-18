@@ -21,11 +21,9 @@ import java.util.Set;
 
 public class AlbionBot extends ListenerAdapter {
     private static final Logger logger = LoggerFactory.getLogger(AlbionBot.class);
-    private static Map<String, BossManager> bossManagers = new HashMap<>();
-    private static Set<String> initializedGuilds = new HashSet<>(); 
-    private static boolean commandsRegistered = false; // Flag to track if commands are registered
-
-
+    private static Set<String> initializedGuilds = new HashSet<>();
+    private static boolean commandsRegistered = true; // Flag to track if commands are registered
+    private static Map<String, CommandListener> commandListeners = new HashMap<>();
 
     public static void main(String[] args) throws Exception {
         JDA jda = initializeBot();
@@ -46,7 +44,10 @@ public class AlbionBot extends ListenerAdapter {
 
     private static void initializeServers(JDA jda) {
         for (Guild guild : jda.getGuilds()) {
-            initializeForGuild(jda, guild.getId());
+            if (!initializedGuilds.contains(guild.getId())) {
+                initializeForGuild(jda, guild.getId());
+                initializedGuilds.add(guild.getId()); // Mark this guild as initialized
+            }
         }
     }
 
@@ -58,21 +59,30 @@ public class AlbionBot extends ListenerAdapter {
     }
 
     private static void initializeForGuild(JDA jda, String serverId) {
-        if (!initializedGuilds.contains(serverId)) { // Check if the guild is already initialized
-            bossManagers.put(serverId, new BossManager(serverId));
+        if (!commandListeners.containsKey(serverId)) {
+            logger.info("Current commandListeners: {}", commandListeners.keySet());
+            BossManager bossManager = new BossManager(serverId);
             String designatedChannelId = ConfigManager.getDesignatedChannelId(serverId);
-            CommandListener commandListener = new CommandListener(jda, designatedChannelId, serverId);
+            CommandListener commandListener = new CommandListener(jda, designatedChannelId, serverId, bossManager);
             jda.addEventListener(commandListener);
-            initializedGuilds.add(serverId); // Add to the set
+            commandListeners.put(serverId, commandListener);
+            logger.info("Listener initialized for server ID: {}", serverId); // Add this line
+        } else {
+            logger.info("Listener already registered for server ID: {}", serverId);
         }
     }
 
     @Override
     public void onGuildJoin(GuildJoinEvent event) {
         String serverId = event.getGuild().getId();
-        createServerFiles(serverId);
-        sendWelcomeMessageIfPossible(event, serverId); // Pass serverId as an argument
-        initializeForGuild(event.getJDA(), serverId);
+    
+        // Check if the guild is already initialized
+        if (!initializedGuilds.contains(serverId)) {
+            createServerFiles(serverId);
+            sendWelcomeMessageIfPossible(event, serverId);
+            initializeForGuild(event.getJDA(), serverId);
+            initializedGuilds.add(serverId); // Mark this guild as initialized
+        }
     }
 
     private void createServerFiles(String serverId) {
