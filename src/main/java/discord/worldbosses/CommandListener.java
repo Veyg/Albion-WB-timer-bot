@@ -102,10 +102,6 @@ public class CommandListener extends ListenerAdapter {
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
         logger.info("Handling slash command interaction: " + event.getName());
-        if (!event.getGuild().getId().equals(this.serverId)) {
-            // This event is not for the guild this listener is responsible for
-            return;
-        }
         if (event.getName().equals("aboutme")) {
             handleAboutMe(event);
             return;
@@ -120,7 +116,15 @@ public class CommandListener extends ListenerAdapter {
             event.reply("Commands in DMs are not supported.").setEphemeral(true).queue();
             return;
         }
-    
+        if (event.getName().equals("help")) {
+            handleHelp(event);
+            return;
+        }
+        if (!event.getGuild().getId().equals(this.serverId)) {
+            // This event is not for the guild this listener is responsible for
+            return;
+        }
+
         // Guild-specific logic starts here
         if (!event.getGuild().getId().equals(this.serverId)) {
             return; // Ignore events from other servers
