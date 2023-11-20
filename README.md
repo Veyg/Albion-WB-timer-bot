@@ -31,6 +31,8 @@ To use the Albion-WB-timer-bot, you can invite it to your Discord server and int
    - Options:
      - `time`: Time for the boss spawn in HH:mm:ss format (required).
      - `map`: Name of the map where the boss spawns (required).
+     - `date`: Date for the boss spawn in dd/MM/yyyy format (optional).
+     - `note`: A note about the timer (optional).
 
 4. `/deletetimer`: Delete a timer for a world boss.
    - Options:
@@ -41,6 +43,7 @@ To use the Albion-WB-timer-bot, you can invite it to your Discord server and int
      - `map`: Name of the map where the boss spawns (required).
      - `newtime`: New time for the boss spawn in HH:mm:ss format (required).
      - `newdate`: New date for the boss spawn in d/MM/yyyy format (required).
+     - `note`: An optional note about the timer (optional).
 
 ## Support the Project
 
