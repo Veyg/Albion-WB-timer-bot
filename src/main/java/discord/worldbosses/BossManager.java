@@ -60,7 +60,7 @@ public class BossManager {
         TimerData data = mapTimers.get(mapName);
         if (data != null) {
             data.setBossSpawnTime(newTime);
-            data.setNote(newNote); // Update the note as well
+            data.setNote(newNote); 
         } else {
             // If there's no existing timer, create a new one with the note
             data = new TimerData(newTime, newNote);
@@ -190,9 +190,8 @@ public class BossManager {
         private String bossSpawnTime;
         private String status;
         private String statusTime;
-        private String note; // New field to store the note
+        private String note;
     
-        // Constructor with note parameter
         public TimerData(String bossSpawnTime, String note) {
             this.bossSpawnTime = bossSpawnTime;
             this.note = note;
@@ -200,7 +199,7 @@ public class BossManager {
         
         public TimerData(String bossSpawnTime) {
             this.bossSpawnTime = bossSpawnTime;
-            this.note = ""; // Default to empty string or null, depending on your requirement
+            this.note = ""; // Default to empty string
         }
         
 

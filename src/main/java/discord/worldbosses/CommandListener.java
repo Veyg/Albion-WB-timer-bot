@@ -96,7 +96,7 @@ public class CommandListener extends ListenerAdapter {
                     }
                 }
             }
-        }, 0, 1, TimeUnit.MINUTES); // Check every minute
+        }, 0, 1, TimeUnit.MINUTES); // Check X time
     }
 
     @Override
@@ -125,7 +125,6 @@ public class CommandListener extends ListenerAdapter {
             return;
         }
 
-        // Guild-specific logic starts here
         if (!event.getGuild().getId().equals(this.serverId)) {
             return; // Ignore events from other servers
         }
@@ -225,7 +224,7 @@ public class CommandListener extends ListenerAdapter {
     }
 
     private void handleDeleteTimer(SlashCommandInteractionEvent event) {
-        OptionMapping mapNameOption = event.getOption("map"); // Changed from "mapn" to "map"
+        OptionMapping mapNameOption = event.getOption("map"); 
 
         if (mapNameOption == null) {
             event.reply("Required option 'map' was not provided.").setEphemeral(true).queue();
@@ -233,7 +232,7 @@ public class CommandListener extends ListenerAdapter {
         }
 
         String mapName = mapNameOption.getAsString();
-        String username = event.getUser().getName(); // Get the username of the person who triggered the event
+        String username = event.getUser().getName(); 
         String details = "Deleted timer for map: " + mapName;
         logAction("Delete Timer", username, details);
         // Check if the timer exists before deleting
@@ -285,7 +284,7 @@ public class CommandListener extends ListenerAdapter {
         String formattedDate = date.format(dateFormatter);
 
         String fullTime = formattedTime + " " + formattedDate;
-        String username = event.getUser().getName(); // Get the username of the person who triggered the event
+        String username = event.getUser().getName();
         String details = "Added timer for map: " + mapName + " at " + fullTime;
         logAction("Add Timer", username, details);
         // Store the timer using BossManager
