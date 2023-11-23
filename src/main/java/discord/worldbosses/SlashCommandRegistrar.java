@@ -11,7 +11,8 @@ public class SlashCommandRegistrar {
 
     private static final Logger logger = LoggerFactory.getLogger(SlashCommandRegistrar.class);
     private JDA jda;
-
+    // todo: commandlistener is being created for every server to serve slash commands, this is not ideal, but it works for now
+    // todo: find a way to make this work with a single commandlistener or multiple commandlisteners for each server - with each commandlistener having access to the bossmanager for that server 
     public SlashCommandRegistrar(JDA jda) {
         this.jda = jda;
         registerCommands();
