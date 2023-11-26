@@ -6,6 +6,7 @@ import net.dv8tion.jda.api.audit.ActionType;
 import net.dv8tion.jda.api.entities.Activity;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
+import net.dv8tion.jda.api.events.guild.GuildLeaveEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.JDA;
@@ -60,10 +61,10 @@ public class AlbionBot extends ListenerAdapter {
 
     private static void initializeForGuild(JDA jda, String serverId) {
         logger.info("Initializing for server ID: {}", serverId);
-        
+
         if (!commandListeners.containsKey(serverId)) {
             logger.info("Creating new CommandListener for server ID: {}", serverId);
-            
+
             BossManager bossManager = new BossManager(serverId);
             String designatedChannelId = ConfigManager.getDesignatedChannelId(serverId);
             CommandListener commandListener = new CommandListener(jda, designatedChannelId, serverId, bossManager);
@@ -74,12 +75,11 @@ public class AlbionBot extends ListenerAdapter {
             logger.info("Listener already registered for server ID: {}", serverId);
         }
     }
-    
 
     @Override
     public void onGuildJoin(GuildJoinEvent event) {
         String serverId = event.getGuild().getId();
-    
+
         // Check if the guild is already initialized
         if (!initializedGuilds.contains(serverId)) {
             createServerFiles(serverId);
@@ -104,6 +104,14 @@ public class AlbionBot extends ListenerAdapter {
                 logger.error("Failed to create file: " + directory + fileName, e);
             }
         }
+    }
+
+    @Override
+    public void onGuildLeave(GuildLeaveEvent event) {
+        String serverId = event.getGuild().getId();
+        initializedGuilds.remove(serverId);
+        commandListeners.remove(serverId);
+        logger.info("Left server ID: {}", serverId);
     }
 
     private void sendWelcomeMessageIfPossible(GuildJoinEvent event, String serverId) {

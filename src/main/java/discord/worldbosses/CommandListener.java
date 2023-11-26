@@ -735,7 +735,7 @@ public class CommandListener extends ListenerAdapter {
                 "For questions, issues, or support, you can contact the author, Veyg, or create a GitHub issue in this repository.\n"
                         +
                         "🔗 [GitHub Repo](https://github.com/Veyg/Albion-WB-timer-bot)\n" +
-                        "🔗 [Support Server](https://discord.gg/rs7u8d5FRz)",
+                        "🔗 [Support Server](https://veyg.me/404)",
                 false);
 
         embed.setFooter("Thank you for using the World Boss Bot!");
