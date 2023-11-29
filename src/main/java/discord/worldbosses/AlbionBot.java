@@ -61,10 +61,10 @@ public class AlbionBot extends ListenerAdapter {
 
     private static void initializeForGuild(JDA jda, String serverId) {
         logger.info("Initializing for server ID: {}", serverId);
-
+    
         if (!commandListeners.containsKey(serverId)) {
             logger.info("Creating new CommandListener for server ID: {}", serverId);
-
+    
             BossManager bossManager = new BossManager(serverId);
             String designatedChannelId = ConfigManager.getDesignatedChannelId(serverId);
             CommandListener commandListener = new CommandListener(jda, designatedChannelId, serverId, bossManager);
@@ -74,8 +74,8 @@ public class AlbionBot extends ListenerAdapter {
         } else {
             logger.info("Listener already registered for server ID: {}", serverId);
         }
-    }
-
+    }    
+    
     @Override
     public void onGuildJoin(GuildJoinEvent event) {
         String serverId = event.getGuild().getId();
