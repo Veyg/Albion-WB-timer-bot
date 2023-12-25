@@ -124,10 +124,6 @@ public class CommandListener extends ListenerAdapter {
             // This event is not for the guild this listener is responsible for
             return;
         }
-
-        if (!event.getGuild().getId().equals(this.serverId)) {
-            return; // Ignore events from other servers
-        }
     
         String currentDesignatedChannelId = ConfigManager.getDesignatedChannelId(event.getGuild().getId());
     
