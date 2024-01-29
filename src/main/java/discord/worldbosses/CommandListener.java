@@ -114,7 +114,7 @@ public class CommandListener extends ListenerAdapter {
             // This event is not for the guild this listener is responsible for
             return;
         }
-
+        logger.info("Handling slash command interaction: " + event.getName());
         if (event.getName().equals("aboutme")) {
             handleAboutMe(event);
             return;
