@@ -60,6 +60,7 @@ public class CommandListener extends ListenerAdapter {
         this.serverId = serverId;
         this.bossManager = bossManager;
         startPeriodicCheck();
+        logger.info("CommandListener created for server ID: {}", serverId);
     }
 
     private void logAction(String action, String username, String details) {
@@ -102,31 +103,30 @@ public class CommandListener extends ListenerAdapter {
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
         logger.info("Handling slash command interaction: " + event.getName());
-        if (event.getName().equals("aboutme")) {
-            handleAboutMe(event);
-            return;
-        }
-        if (event.getName().equals("help")) {
-            handleHelp(event);
-            return;
-        }
-    
+
         // Ignore all other commands in DMs
         if (event.getGuild() == null) {
             event.reply("Commands in DMs are not supported.").setEphemeral(true).queue();
             return;
         }
-        if (event.getName().equals("help")) {
-            handleHelp(event);
-            return;
-        }
+
         if (!event.getGuild().getId().equals(this.serverId)) {
             // This event is not for the guild this listener is responsible for
             return;
         }
-    
+
+        if (event.getName().equals("aboutme")) {
+            handleAboutMe(event);
+            return;
+        }
+
+        if (event.getName().equals("help")) {
+            handleHelp(event);
+            return;
+        }
+
         String currentDesignatedChannelId = ConfigManager.getDesignatedChannelId(event.getGuild().getId());
-    
+
         // Check if the command is setdesignatedchannel and if the user is an admin
         if (event.getName().equals("setdesignatedchannel")) {
             if (event.getMember().hasPermission(Permission.ADMINISTRATOR)) {
@@ -137,13 +137,13 @@ public class CommandListener extends ListenerAdapter {
             }
             return;
         }
-    
+
         // For all other commands, check if they are used in the designated channel
         if (!event.getChannel().getId().equals(currentDesignatedChannelId)) {
             event.reply("Don't use it here 🤓").setEphemeral(true).queue();
             return; // Ignore interactions outside the designated channel
         }
-    
+
         // Handling other commands
         switch (event.getName()) {
             case "addtimer":

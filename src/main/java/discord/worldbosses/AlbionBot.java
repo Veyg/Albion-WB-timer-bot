@@ -60,32 +60,40 @@ public class AlbionBot extends ListenerAdapter {
     }
 
     private static void initializeForGuild(JDA jda, String serverId) {
-        logger.info("Initializing for server ID: {}", serverId);
-    
-        if (!commandListeners.containsKey(serverId)) {
-            logger.info("Creating new CommandListener for server ID: {}", serverId);
-    
-            BossManager bossManager = new BossManager(serverId);
-            String designatedChannelId = ConfigManager.getDesignatedChannelId(serverId);
-            CommandListener commandListener = new CommandListener(jda, designatedChannelId, serverId, bossManager);
-            jda.addEventListener(commandListener);
-            commandListeners.put(serverId, commandListener);
-            logger.info("Listener initialized for server ID: {}", serverId);
-        } else {
+        // If a listener already exists for this server, return early
+        if (commandListeners.containsKey(serverId)) {
             logger.info("Listener already registered for server ID: {}", serverId);
+            return;
         }
-    }    
     
-    @Override
-    public void onGuildJoin(GuildJoinEvent event) {
-        String serverId = event.getGuild().getId();
+        logger.info("Initializing for server ID: {}", serverId);
+        logger.info("Creating new CommandListener for server ID: {}", serverId);
+    
+        BossManager bossManager = new BossManager(serverId);
+        String designatedChannelId = ConfigManager.getDesignatedChannelId(serverId);
+        CommandListener commandListener = new CommandListener(jda, designatedChannelId, serverId, bossManager);
+    
+        jda.addEventListener(commandListener);
+        commandListeners.put(serverId, commandListener);
+        logger.info("Listener initialized for server ID: {}", serverId);
+    }
 
+    @Override
+    public synchronized void onGuildJoin(GuildJoinEvent event) {
+        String serverId = event.getGuild().getId();
+        logger.info("Bot joined server ID: {}", serverId);
+    
+        // Check if the bot has already been initialized for this server
+        if (commandListeners.containsKey(serverId)) {
+            logger.info("Bot already initialized for server ID: {}", serverId);
+            return;
+        }
+    
         // Check if the guild is already initialized
         if (!initializedGuilds.contains(serverId)) {
             createServerFiles(serverId);
             sendWelcomeMessageIfPossible(event, serverId);
             initializeForGuild(event.getJDA(), serverId);
-            initializedGuilds.add(serverId); // Mark this guild as initialized
         }
     }
 
