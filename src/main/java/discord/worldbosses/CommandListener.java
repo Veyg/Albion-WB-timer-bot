@@ -102,8 +102,6 @@ public class CommandListener extends ListenerAdapter {
 
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
-        logger.info("Handling slash command interaction: " + event.getName());
-
         // Ignore all other commands in DMs
         if (event.getGuild() == null) {
             event.reply("Commands in DMs are not supported.").setEphemeral(true).queue();
