@@ -50,7 +50,6 @@ public class CommandListener extends ListenerAdapter {
     private String timerMessageId;
     private JDA jda;
     private ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-    // private Set<String> sentNotifications = new HashSet<>();
     private String serverId;
     private Map<String, List<String>> bossNotificationMessages = new HashMap<>();
     private static final Logger logger = LoggerFactory.getLogger(CommandListener.class);
@@ -99,7 +98,7 @@ public class CommandListener extends ListenerAdapter {
             }
         }, 0, 1, TimeUnit.MINUTES); // Check X time
     }
-
+    // TODO: Add support for slash commands in DMs
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
         // Ignore all other commands in DMs
@@ -675,7 +674,6 @@ public class CommandListener extends ListenerAdapter {
     }
 
     private void handleAboutMe(SlashCommandInteractionEvent event) {
-        System.out.println("Replying to command in handleAboutMe method");
         String version = readVersionFromFile();
 
         EmbedBuilder embed = new EmbedBuilder();
@@ -686,7 +684,7 @@ public class CommandListener extends ListenerAdapter {
         embed.addField("Website", "[Bot's Website](https://veyg.me/worldbossbot/)", false);
         embed.addField("Github", "[Github](https://github.com/Veyg/Albion-WB-timer-bot)", false);
         embed.addField("Support Me", "[Buy me a coffee](https://www.buymeacoffee.com/veyg)", false);
-        embed.addField("Discord Contact", "Infactor", false); // Updated as per your request
+        embed.addField("Discord Contact", "Infactor", false);
         embed.setColor(Color.CYAN);
         embed.setThumbnail(event.getJDA().getSelfUser().getAvatarUrl());
         event.replyEmbeds(embed.build()).setEphemeral(true).queue();
