@@ -282,7 +282,6 @@ public class CommandListener extends ListenerAdapter {
         logAction("Add Timer", username, details);
         // Store the timer using BossManager
         bossManager.addTimer(mapName, fullTime, note);
-        bossManager.saveTimers();
         sendTimersToChannel(serverId);
         // Provide feedback to the user
         String replyMessage = "Timer added for " + mapName + " at " + fullTime;
