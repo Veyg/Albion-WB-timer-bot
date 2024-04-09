@@ -81,7 +81,8 @@ public class AlbionBot extends ListenerAdapter {
     @Override
     public synchronized void onGuildJoin(GuildJoinEvent event) {
         String serverId = event.getGuild().getId();
-        logger.info("Bot joined server ID: {}", serverId);
+        String ServerName = event.getGuild().getName();
+        logger.info("Bot joined server ID: {}", serverId, "Server Name: {}", ServerName);
     
         // Check if the bot has already been initialized for this server
         if (commandListeners.containsKey(serverId)) {
