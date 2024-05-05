@@ -24,8 +24,8 @@ public class SlashCommandRegistrar {
             "Darkground Swamp", "Deadvein Gully", "Deathwisp Sink", "Drownfield Wetland", "Dryvein Steppe",
             "Farshore Heath", "Flimmerair Steppe", "Hightree Levee", "Longfen Arms", "Longfen Veins",
             "Longtimber Glen", "Nightbloom Forest", "Rivercopse Fount", "Runnelvein Bog", "Skysand Ridge",
-            "Stumprot Swamp", "Sunfang Cliffs", "Sunfang Dawn", "Sunstrand Dunes", "Timberslope Grove",
-            "Timbertop Dale", "Watchwood Bluffs", "Westweald Shore", "Sunkenbough Spring"
+            "Stumprot Swamp", "Sunfang Cliffs", "Sunfang Dawn", "Sunkenbough Spring", "Timberslope Grove",
+            "Timbertop Dale", "Watchwood Bluffs", "Westweald Shore", "Sunstrand Dunes"
         };
         for (String map : maps) {
             mapOption.addChoice(map, map);
