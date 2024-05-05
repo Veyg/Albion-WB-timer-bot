@@ -25,7 +25,7 @@ public class SlashCommandRegistrar {
             "Farshore Heath", "Flimmerair Steppe", "Hightree Levee", "Longfen Arms", "Longfen Veins",
             "Longtimber Glen", "Nightbloom Forest", "Rivercopse Fount", "Runnelvein Bog", "Skysand Ridge",
             "Stumprot Swamp", "Sunfang Cliffs", "Sunfang Dawn", "Sunstrand Dunes", "Timberslope Grove",
-            "Timbertop Dale", "Watchwood Bluffs", "Westweald Shore"
+            "Timbertop Dale", "Watchwood Bluffs", "Westweald Shore", "Sunkenbough Spring"
         };
         for (String map : maps) {
             mapOption.addChoice(map, map);
@@ -41,6 +41,7 @@ public class SlashCommandRegistrar {
             Commands.slash("setdesignatedchannel", "Set the designated channel for timers"),
             Commands.slash("help", "Get a list of available commands and their descriptions"),
             Commands.slash("addtimer", "Add a timer for a world boss")
+            // Add command to display what maps can spawn mammmoths 
                 .addOption(OptionType.STRING, "time", "Time for the boss spawn in HH:mm:ss format", true)
                 .addOptions(mapOption)
                 .addOption(OptionType.STRING, "date", "Date for the boss spawn in dd/MM/yyyy format", false)

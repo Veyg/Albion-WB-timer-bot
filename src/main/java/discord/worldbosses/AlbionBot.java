@@ -23,7 +23,7 @@ import java.util.Set;
 public class AlbionBot extends ListenerAdapter {
     private static final Logger logger = LoggerFactory.getLogger(AlbionBot.class);
     private static Set<String> initializedGuilds = new HashSet<>();
-    private static boolean commandsRegistered = true; // Flag to track if commands are registered
+    private static boolean commandsRegistered = false; // Flag to track if commands are registered
     private static Map<String, CommandListener> commandListeners = new HashMap<>();
 
     public static void main(String[] args) throws Exception {
