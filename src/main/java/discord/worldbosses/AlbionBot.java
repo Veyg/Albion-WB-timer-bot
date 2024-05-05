@@ -55,9 +55,10 @@ public class AlbionBot extends ListenerAdapter {
     private static void registerSlashCommands(JDA jda) {
         if (!commandsRegistered) { // Check if commands are already registered
             new SlashCommandRegistrar(jda).registerCommands();
-            commandsRegistered = true; // Set the flag to true
+            commandsRegistered = true; // Set the flag to true only after successful registration
         }
     }
+    
 
     private static void initializeForGuild(JDA jda, String serverId) {
         // If a listener already exists for this server, return early

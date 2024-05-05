@@ -152,6 +152,10 @@ public class CommandListener extends ListenerAdapter {
             case "edittimer":
                 handleEditTimer(event);
                 break;
+            // TODO: Add command to list all spawn locations for mammoths
+            // case "listspawns":
+            //     listSpawns(event);
+            //     break;
             default:
                 event.reply("Unknown command.").setEphemeral(true).queue();
         }
